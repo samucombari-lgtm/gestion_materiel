@@ -1,0 +1,64 @@
+/*
+ * Feuille de style de l'application. CSS simple, sans outil de compilation :
+ * le fichier est servi tel quel par le serveur web.
+ */
+
+body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: #f4f5f7;
+    color: #1f2933;
+}
+
+.conteneur {
+    max-width: 420px;
+    margin: 48px auto;
+    padding: 24px;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+label {
+    display: block;
+    margin-top: 16px;
+    font-weight: 600;
+}
+
+input {
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 4px;
+    padding: 8px;
+    border: 1px solid #c3c8cf;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+button {
+    margin-top: 20px;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 4px;
+    background: #1d4ed8;
+    color: #ffffff;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.erreur {
+    padding: 8px 12px;
+    border-radius: 4px;
+    background: #fde8e8;
+    color: #9b1c1c;
+}
+
+.erreur p {
+    margin: 4px 0;
+}
+
+.mention-rgpd {
+    margin-top: 24px;
+    font-size: 0.85rem;
+    color: #52606d;
+}

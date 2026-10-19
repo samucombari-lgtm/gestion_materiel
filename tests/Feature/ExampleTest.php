@@ -8,12 +8,12 @@ use Tests\TestCase;
 class ExampleTest extends TestCase
 {
     /**
-     * A basic test example.
+     * Un visiteur non connecté qui ouvre l'accueil est renvoyé vers la connexion.
+     * Les vrais tests d'autorisation (section 5.7) arrivent à l'étape 8.
      */
-    public function test_the_application_returns_a_successful_response(): void
+    public function test_un_visiteur_est_redirige_vers_la_connexion(): void
     {
-        $response = $this->get('/');
-
-        $response->assertStatus(200);
+        $this->get('/')->assertRedirect('/tableau-de-bord');
+        $this->get('/tableau-de-bord')->assertRedirect('/connexion');
     }
 }
