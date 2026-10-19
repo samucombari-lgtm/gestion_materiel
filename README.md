@@ -155,6 +155,39 @@ Pour repartir de zéro (⚠️ efface toute la base) :
 php artisan migrate:fresh --seed
 ```
 
+#### Alternative : importer le script SQL
+
+> ✅ **Les migrations restent la méthode recommandée.** Elles sont toujours à jour avec le code, elles fonctionnent aussi pour la base SQLite des tests, et c'est par elles que les évolutions de la base seront livrées. Le script SQL est fourni comme livrable (cahier des charges, section 9) et pour un poste où l'on veut seulement une base de démonstration.
+
+Le fichier [docs/base_gestion_materiel.sql](docs/base_gestion_materiel.sql) contient la **structure** (les 17 tables et les 2 triggers du journal) et le **même jeu de données de test** que les seeders. Il remplace les étapes `migrate --seed` ci-dessus, à condition que la base et l'utilisateur `materiel_app` existent déjà (étape 3) :
+
+```bash
+mariadb -u materiel_app -p gestion_materiel < docs/base_gestion_materiel.sql
+```
+
+À savoir :
+
+- ⚠️ le script commence par `DROP TABLE IF EXISTS` : il **remplace** les tables existantes et efface leurs données ;
+- la table `migrations` est remplie : `php artisan migrate:status` affiche toutes les migrations comme déjà exécutées ;
+- les dates des 3 demandes de prêt sont celles du jour où le fichier a été généré ;
+- ⚠️ **développement et démonstration uniquement** : il contient les comptes de test, dont les mots de passe sont publics.
+
+Pour **régénérer** le fichier après une modification des migrations ou des seeders :
+
+```bash
+php artisan migrate:fresh --seed
+mysqldump -u materiel_app -p --single-transaction --no-tablespaces --triggers --skip-dump-date \
+  --ignore-table-data=gestion_materiel.sessions --ignore-table-data=gestion_materiel.cache \
+  --ignore-table-data=gestion_materiel.cache_locks --ignore-table-data=gestion_materiel.jobs \
+  --ignore-table-data=gestion_materiel.job_batches --ignore-table-data=gestion_materiel.failed_jobs \
+  --ignore-table-data=gestion_materiel.password_reset_tokens \
+  gestion_materiel | sed 's#/\*!50017 DEFINER=`[^`]*`@`[^`]*`\*/ ##' > docs/base_gestion_materiel.sql
+```
+
+- **Les options `--ignore-table-data`** : elles créent les tables techniques (sessions, cache…) **vides**, pour qu'aucune session ni aucun mot de passe temporaire ne se retrouve dans le fichier.
+- **La commande `sed`** : elle retire la clause `DEFINER` des triggers. Sans ça, l'import échouerait avec un autre utilisateur MariaDB.
+- **L'en-tête explicatif** au début du fichier est à recopier à la main.
+
 ### 6. Lancer l'application
 
 ```bash
@@ -221,7 +254,7 @@ config/prets.php             Réglages des prêts (limite RA-07)
 database/
 ├── migrations/              Création des tables (noms en français) et protection du journal
 └── seeders/                 Rôles, permissions, données de test
-docs/                        Cahier des charges, architecture, autorisations
+docs/                        Cahier des charges, architecture, autorisations, script SQL
 public/css/app.css           Feuille de style
 resources/views/             Vues Blade (un dossier par écran, errors/ pour 403, 404, 429)
 routes/web.php               Toutes les routes, avec leurs middlewares
@@ -264,6 +297,7 @@ La commande affiche **une seule fois** un mot de passe temporaire de 16 caractè
 - 📐 [Architecture : schéma fonctionnel et schéma technique](docs/architecture.md)
 - 🔐 [Autorisations : matrice rôles / permissions et règles RA-01 à RA-08](docs/autorisations.md)
 - 📋 [Cahier des charges](docs/cahier-des-charges.md)
+- 🗄️ [Script SQL : structure + données de test](docs/base_gestion_materiel.sql) (alternative aux migrations, voir « Installation »)
 
 ---
 
