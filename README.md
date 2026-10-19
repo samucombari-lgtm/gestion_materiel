@@ -221,7 +221,7 @@ config/prets.php             Réglages des prêts (limite RA-07)
 database/
 ├── migrations/              Création des tables (noms en français) et protection du journal
 └── seeders/                 Rôles, permissions, données de test
-docs/                        Cahier des charges et architecture
+docs/                        Cahier des charges, architecture, autorisations
 public/css/app.css           Feuille de style
 resources/views/             Vues Blade (un dossier par écran, errors/ pour 403, 404, 429)
 routes/web.php               Toutes les routes, avec leurs middlewares
@@ -262,6 +262,7 @@ La commande affiche **une seule fois** un mot de passe temporaire de 16 caractè
 ## Documentation
 
 - 📐 [Architecture : schéma fonctionnel et schéma technique](docs/architecture.md)
+- 🔐 [Autorisations : matrice rôles / permissions et règles RA-01 à RA-08](docs/autorisations.md)
 - 📋 [Cahier des charges](docs/cahier-des-charges.md)
 
 ---

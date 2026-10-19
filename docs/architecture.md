@@ -137,6 +137,8 @@ Une requête traverse quatre filtres avant d'arriver au contrôleur. Elle s'arr�
 
 #### Autorisations : Gates et Policies
 
+Le détail complet (matrice, règles RA-01 à RA-08, procédure pour ajouter une permission) est dans [autorisations.md](autorisations.md).
+
 - **Un Gate par permission** (`AppServiceProvider`). Les 11 noms viennent de `Permission::LISTE`. **Quel rôle a quelle permission** est stocké en base, dans `role_permission` : on peut ajuster la matrice sans réécrire le code (section 5.5).
   *Refus par défaut* (RA-01) : une permission absente de la table, ou un visiteur non connecté, donne toujours « non ».
 - **`PretPolicy`** : `view` (RA-03), `valider` (RA-04 + périmètre de classe), `annuler`, `sortir`, `rendre`.
