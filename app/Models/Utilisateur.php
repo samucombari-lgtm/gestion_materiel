@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
@@ -60,11 +63,69 @@ class Utilisateur extends Authenticatable
     protected function casts(): array
     {
         return [
+            'role_id' => 'integer',
             'actif' => 'boolean',
             'doit_changer_mot_de_passe' => 'boolean',
             'echecs_connexion' => 'integer',
             'bloque_jusqua' => 'datetime',
         ];
+    }
+
+    /** Un utilisateur a un seul rôle (association AVOIR). */
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'role_id');
+    }
+
+    /** Les classes de l'élève ou de l'enseignant (association APPARTENIR). */
+    public function classes(): BelongsToMany
+    {
+        return $this->belongsToMany(Classe::class, 'classe_utilisateur', 'utilisateur_id', 'classe_id');
+    }
+
+    /** Les prêts demandés par cet utilisateur (association DEMANDER). */
+    public function pretsDemandes(): HasMany
+    {
+        return $this->hasMany(Pret::class, 'demandeur_id');
+    }
+
+    /**
+     * Le rôle de l'utilisateur possède-t-il cette permission dans role_permission ?
+     * Utilisé par les Gates (AppServiceProvider).
+     *
+     * Un compte désactivé n'a plus aucune permission, même si sa session est
+     * encore ouverte : c'est une sécurité en plus de RA-06.
+     *
+     * Le rôle et ses permissions sont chargés depuis la base une seule fois par
+     * requête : Eloquent les garde ensuite en mémoire dans l'objet.
+     */
+    public function aLaPermission(string $nomPermission): bool
+    {
+        if (! $this->actif) {
+            return false;
+        }
+
+        return $this->role->permissions->contains('nom', $nomPermission);
+    }
+
+    public function aLeRole(string $nomRole): bool
+    {
+        return $this->role->nom === $nomRole;
+    }
+
+    /**
+     * Cet utilisateur est-il un enseignant d'une classe de cet élève ?
+     * Sert à « l'enseignant voit et valide les prêts des élèves de ses classes ».
+     */
+    public function enseigneA(Utilisateur $eleve): bool
+    {
+        if (! $this->aLeRole(Role::ENSEIGNANT) || ! $eleve->aLeRole(Role::ELEVE)) {
+            return false;
+        }
+
+        $idsClassesDeLEleve = $eleve->classes()->pluck('classes.id');
+
+        return $this->classes()->whereIn('classes.id', $idsClassesDeLEleve)->exists();
     }
 
     public function estBloque(): bool

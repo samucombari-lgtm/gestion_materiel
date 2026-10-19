@@ -36,4 +36,14 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware(['auth', 'mot-de-passe.change'])->group(function () {
     Route::view('/tableau-de-bord', 'tableau-de-bord')->name('tableau-de-bord');
+
+    // can:xxx = le Gate "xxx" doit répondre oui, sinon Laravel renvoie une erreur 403
+    // (page resources/views/errors/403.blade.php). Contrôle côté serveur : RA-02.
+    // Pages provisoires : leur contenu arrive aux étapes 5 (matériel) et 7 (comptes, journal).
+    Route::view('/materiels', 'a-venir', ['titre' => 'Catalogue du matériel'])
+        ->middleware('can:materiel.voir')->name('materiels');
+    Route::view('/comptes', 'a-venir', ['titre' => 'Gestion des comptes'])
+        ->middleware('can:compte.gerer')->name('comptes');
+    Route::view('/journal', 'a-venir', ['titre' => 'Journal de sécurité'])
+        ->middleware('can:journal.voir')->name('journal');
 });
