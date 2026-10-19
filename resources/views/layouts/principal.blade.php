@@ -30,7 +30,7 @@
             @endcan
 
             @can('compte.gerer')
-                <a href="{{ route('comptes') }}">Comptes</a>
+                <a href="{{ route('comptes.index') }}">Comptes</a>
             @endcan
 
             @can('journal.voir')

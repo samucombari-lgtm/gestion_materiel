@@ -22,6 +22,13 @@ class Role extends Model
 
     public const TOUS = [self::ELEVE, self::ENSEIGNANT, self::GESTIONNAIRE, self::ADMINISTRATEUR];
 
+    public const LIBELLES = [
+        self::ELEVE          => 'Élève',
+        self::ENSEIGNANT     => 'Enseignant',
+        self::GESTIONNAIRE   => 'Gestionnaire',
+        self::ADMINISTRATEUR => 'Administrateur',
+    ];
+
     protected $table = 'roles';
 
     /** La table n'a pas de colonnes created_at / updated_at. */
@@ -33,6 +40,11 @@ class Role extends Model
     public function permissions(): BelongsToMany
     {
         return $this->belongsToMany(Permission::class, 'role_permission', 'role_id', 'permission_id');
+    }
+
+    public function libelle(): string
+    {
+        return self::LIBELLES[$this->nom] ?? $this->nom;
     }
 
     public function utilisateurs(): HasMany

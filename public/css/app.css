@@ -290,3 +290,22 @@ select {
 .action-compte_bloque td {
     color: #9b1c1c;
 }
+
+/* Gestion des comptes. */
+.mot-de-passe-temporaire {
+    font-family: monospace;
+    font-size: 1.3rem;
+    letter-spacing: 1px;
+    user-select: all;
+}
+
+.liste-classes {
+    margin-top: 16px;
+    border: 1px solid #e4e7eb;
+    border-radius: 4px;
+}
+
+.liste-classes .case-a-cocher {
+    display: inline-block;
+    margin: 4px 16px 4px 0;
+}

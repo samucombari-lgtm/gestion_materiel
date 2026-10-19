@@ -15,6 +15,7 @@
 
 use App\Http\Controllers\Auth\ConnexionController;
 use App\Http\Controllers\Auth\MotDePasseController;
+use App\Http\Controllers\CompteController;
 use App\Http\Controllers\JournalController;
 use App\Http\Controllers\MaterielController;
 use App\Http\Controllers\PretController;
@@ -81,7 +82,16 @@ Route::middleware(['auth', 'mot-de-passe.change'])->group(function () {
     Route::get('/journal', [JournalController::class, 'index'])
         ->middleware('can:journal.voir')->name('journal');
 
-    // Page provisoire : la gestion des comptes (BF-04) n'est pas encore construite.
-    Route::view('/comptes', 'a-venir', ['titre' => 'Gestion des comptes'])
-        ->middleware('can:compte.gerer')->name('comptes');
+    // Gestion des comptes (BF-04) : administrateur seulement.
+    // Les règles sur un compte précis (RA-05…) sont dans UtilisateurPolicy.
+    Route::middleware('can:compte.gerer')->group(function () {
+        Route::get('/comptes', [CompteController::class, 'index'])->name('comptes.index');
+        Route::get('/comptes/nouveau', [CompteController::class, 'create'])->name('comptes.create');
+        Route::post('/comptes', [CompteController::class, 'store'])->name('comptes.store');
+        Route::get('/comptes/{compte}/modifier', [CompteController::class, 'edit'])->name('comptes.edit');
+        Route::put('/comptes/{compte}', [CompteController::class, 'update'])->name('comptes.update');
+        Route::patch('/comptes/{compte}/role', [CompteController::class, 'changerRole'])->name('comptes.role');
+        Route::patch('/comptes/{compte}/desactiver', [CompteController::class, 'desactiver'])->name('comptes.desactiver');
+        Route::patch('/comptes/{compte}/reactiver', [CompteController::class, 'reactiver'])->name('comptes.reactiver');
+    });
 });

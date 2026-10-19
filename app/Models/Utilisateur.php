@@ -90,6 +90,37 @@ class Utilisateur extends Authenticatable
         return $this->hasMany(Pret::class, 'demandeur_id');
     }
 
+    /** Section 5.6 : un compte qui a du matériel sorti ne peut pas être désactivé. */
+    public function aDuMaterielNonRendu(): bool
+    {
+        return $this->pretsDemandes()->where('statut', Pret::SORTI)->exists();
+    }
+
+    /**
+     * RA-05 : vrai si ce compte est le seul administrateur actif.
+     * On ne peut alors ni le désactiver, ni lui retirer le rôle administrateur.
+     */
+    public function estDernierAdministrateurActif(): bool
+    {
+        if (! $this->actif || ! $this->aLeRole(Role::ADMINISTRATEUR)) {
+            return false;
+        }
+
+        $nombreAdministrateursActifs = Utilisateur::where('actif', true)
+            ->whereHas('role', function ($role) {
+                $role->where('nom', Role::ADMINISTRATEUR);
+            })
+            ->count();
+
+        return $nombreAdministrateursActifs <= 1;
+    }
+
+    /** Seuls les élèves et les enseignants appartiennent à des classes (association APPARTENIR). */
+    public function peutAvoirDesClasses(): bool
+    {
+        return $this->aLeRole(Role::ELEVE) || $this->aLeRole(Role::ENSEIGNANT);
+    }
+
     /**
      * Le rôle de l'utilisateur possède-t-il cette permission dans role_permission ?
      * Utilisé par les Gates (AppServiceProvider).

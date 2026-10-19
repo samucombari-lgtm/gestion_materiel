@@ -29,9 +29,11 @@ class Journal extends Model
     public const PRET_ANNULE = 'pret_annule';
     public const PRET_SORTI = 'pret_sorti';
     public const PRET_RENDU = 'pret_rendu';
-    // Prêtes pour l'écran de gestion des comptes (BF-04), pas encore construit.
+    // Gestion des comptes (BF-04).
     public const COMPTE_CREE = 'compte_cree';
+    public const COMPTE_MODIFIE = 'compte_modifie';
     public const COMPTE_DESACTIVE = 'compte_desactive';
+    public const COMPTE_REACTIVE = 'compte_reactive';
     public const ROLE_CHANGE = 'role_change';
 
     public const LIBELLES_ACTIONS = [
@@ -46,7 +48,9 @@ class Journal extends Model
         self::PRET_SORTI          => 'Sortie de matériel',
         self::PRET_RENDU          => 'Retour de matériel',
         self::COMPTE_CREE         => 'Compte créé',
+        self::COMPTE_MODIFIE      => 'Compte modifié',
         self::COMPTE_DESACTIVE    => 'Compte désactivé',
+        self::COMPTE_REACTIVE     => 'Compte réactivé',
         self::ROLE_CHANGE         => 'Rôle changé',
     ];
 
