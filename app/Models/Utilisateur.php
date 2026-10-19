@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 /**
  * Modèle Eloquent de la table "utilisateurs" (cahier des charges, section 7.2).
@@ -91,5 +93,29 @@ class Utilisateur extends Authenticatable
         $this->echecs_connexion = 0;
         $this->bloque_jusqua = null;
         $this->save();
+    }
+
+    /** Enregistre le nouveau mot de passe haché (ES-01) et lève l'obligation de le changer. */
+    public function changerMotDePasse(string $nouveauMotDePasse): void
+    {
+        $this->mot_de_passe_hash = Hash::make($nouveauMotDePasse);
+        $this->doit_changer_mot_de_passe = false;
+        $this->save();
+    }
+
+    /**
+     * Supprime les sessions ouvertes de l'utilisateur dans la table "sessions" :
+     * il est déconnecté partout. $sauf permet de garder la session en cours.
+     * Servira aussi pour RA-06 (changement de rôle ou désactivation).
+     */
+    public function fermerSessions(?string $sauf = null): void
+    {
+        $requete = DB::table('sessions')->where('user_id', $this->id);
+
+        if ($sauf !== null) {
+            $requete->where('id', '!=', $sauf);
+        }
+
+        $requete->delete();
     }
 }

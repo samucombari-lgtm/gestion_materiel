@@ -15,6 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo('/connexion');
         // Utilisateur déjà connecté sur la page de connexion (middleware "guest") → tableau de bord.
         $middleware->redirectUsersTo('/tableau-de-bord');
+
+        // Nom court pour utiliser nos middlewares dans routes/web.php.
+        $middleware->alias([
+            'mot-de-passe.change' => \App\Http\Middleware\ExigerChangementMotDePasse::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

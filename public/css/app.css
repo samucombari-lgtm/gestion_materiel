@@ -62,3 +62,24 @@ button {
     font-size: 0.85rem;
     color: #52606d;
 }
+
+.succes,
+.information {
+    padding: 8px 12px;
+    border-radius: 4px;
+}
+
+.succes {
+    background: #e3f9e5;
+    color: #05400a;
+}
+
+.information {
+    background: #e8f0fe;
+    color: #1e3a8a;
+}
+
+.bouton-secondaire {
+    background: #e4e7eb;
+    color: #1f2933;
+}

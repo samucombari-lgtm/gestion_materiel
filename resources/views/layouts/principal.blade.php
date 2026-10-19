@@ -13,6 +13,11 @@
 </head>
 <body>
     <main class="conteneur">
+        {{-- Message de confirmation envoyé par un contrôleur avec ->with('succes', '...') --}}
+        @if (session('succes'))
+            <p class="succes" role="status">{{ session('succes') }}</p>
+        @endif
+
         @yield('contenu')
     </main>
 </body>
