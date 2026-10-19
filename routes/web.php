@@ -15,8 +15,10 @@
 
 use App\Http\Controllers\Auth\ConnexionController;
 use App\Http\Controllers\Auth\MotDePasseController;
+use App\Http\Controllers\JournalController;
 use App\Http\Controllers\MaterielController;
 use App\Http\Controllers\PretController;
+use App\Http\Controllers\TableauDeBordController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/tableau-de-bord');
@@ -37,7 +39,8 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::middleware(['auth', 'mot-de-passe.change'])->group(function () {
-    Route::view('/tableau-de-bord', 'tableau-de-bord')->name('tableau-de-bord');
+    // Tableau de bord adapté au rôle (BF-30).
+    Route::get('/tableau-de-bord', [TableauDeBordController::class, 'afficher'])->name('tableau-de-bord');
 
     // can:xxx = le Gate "xxx" doit répondre oui, sinon Laravel renvoie une erreur 403
     // (page resources/views/errors/403.blade.php). Contrôle côté serveur : RA-02.
@@ -74,9 +77,11 @@ Route::middleware(['auth', 'mot-de-passe.change'])->group(function () {
     Route::patch('/prets/{id}/sortie', [PretController::class, 'sortir'])->where('id', '[0-9]{1,9}')->name('prets.sortir');
     Route::patch('/prets/{id}/retour', [PretController::class, 'rendre'])->where('id', '[0-9]{1,9}')->name('prets.rendre');
 
-    // Pages provisoires : leur contenu arrive à l'étape 7.
+    // Journal de sécurité (BF-31) : lecture seule, une seule route en GET.
+    Route::get('/journal', [JournalController::class, 'index'])
+        ->middleware('can:journal.voir')->name('journal');
+
+    // Page provisoire : la gestion des comptes (BF-04) n'est pas encore construite.
     Route::view('/comptes', 'a-venir', ['titre' => 'Gestion des comptes'])
         ->middleware('can:compte.gerer')->name('comptes');
-    Route::view('/journal', 'a-venir', ['titre' => 'Journal de sécurité'])
-        ->middleware('can:journal.voir')->name('journal');
 });

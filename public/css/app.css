@@ -247,3 +247,46 @@ select {
 .bouton-danger {
     background: #b91c1c;
 }
+
+/* Tableau de bord : un bloc par information. */
+.bloc {
+    margin-bottom: 24px;
+    padding: 16px;
+    border: 1px solid #e4e7eb;
+    border-radius: 8px;
+}
+
+.bloc h2 {
+    margin-top: 0;
+}
+
+.bloc-alerte {
+    border-color: #f8b4b4;
+    background: #fdf2f2;
+}
+
+.vide {
+    color: #52606d;
+}
+
+.compteurs {
+    display: flex;
+    gap: 16px;
+}
+
+.compteur {
+    padding: 8px 12px;
+    border-radius: 4px;
+    background: #f4f5f7;
+}
+
+/* Journal : on met en évidence les événements à surveiller. */
+.tableau-journal {
+    font-size: 0.9rem;
+}
+
+.action-connexion_echouee td,
+.action-acces_refuse td,
+.action-compte_bloque td {
+    color: #9b1c1c;
+}

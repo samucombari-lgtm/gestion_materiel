@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Journal;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
@@ -58,6 +59,8 @@ class MotDePasseController extends Controller
 
         $request->session()->regenerate();
         $utilisateur->fermerSessions(sauf: $request->session()->getId());
+
+        Journal::enregistrer(Journal::MOT_DE_PASSE_CHANGE, $utilisateur->email);
 
         return redirect()
             ->route('tableau-de-bord')

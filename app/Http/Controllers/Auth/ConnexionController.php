@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Journal;
 use App\Models\Utilisateur;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,9 @@ use Illuminate\View\View;
  *  - ES-03 : blocage 15 minutes après 5 échecs ;
  *  - ES-04 : un seul message d'erreur, que l'e-mail ou le mot de passe soit faux ;
  *  - ES-08 : nouvel identifiant de session après la connexion ;
- *  - ES-10 : validation des champs reçus.
+ *  - ES-10 : validation des champs reçus ;
+ *  - section 6 : chaque connexion réussie ou échouée est écrite dans le journal
+ *    (avec l'e-mail tapé et la raison, jamais le mot de passe).
  *
  * Point clé : un pirate ne doit pas pouvoir deviner si un e-mail a un compte.
  * C'est pourquoi un e-mail inconnu se comporte exactement comme un e-mail connu :
@@ -68,17 +71,27 @@ class ConnexionController extends Controller
             return $this->refuserEmailInconnu($email, $motDePasse);
         }
 
+        // Pour un compte connu, la ligne du journal est rattachée au compte visé.
+        // Le message à l'écran reste générique (ES-04) : seul l'admin voit la raison.
         if ($utilisateur->estBloque()) {
+            Journal::enregistrer(Journal::CONNEXION_ECHOUEE, 'Compte bloqué : ' . $email, $utilisateur);
             return $this->refuser(self::MESSAGE_TROP_DE_TENTATIVES);
         }
 
         if (! Hash::check($motDePasse, $utilisateur->getAuthPassword())) {
             $utilisateur->enregistrerEchecConnexion();
+            Journal::enregistrer(Journal::CONNEXION_ECHOUEE, 'Mauvais mot de passe : ' . $email, $utilisateur);
+
+            if ($utilisateur->estBloque()) {
+                Journal::enregistrer(Journal::COMPTE_BLOQUE, $email, $utilisateur);
+            }
+
             return $this->refuser(self::MESSAGE_IDENTIFIANTS_INCORRECTS);
         }
 
         // Bon mot de passe mais compte désactivé : même message générique (section 5.7).
         if (! $utilisateur->actif) {
+            Journal::enregistrer(Journal::CONNEXION_ECHOUEE, 'Compte désactivé : ' . $email, $utilisateur);
             return $this->refuser(self::MESSAGE_IDENTIFIANTS_INCORRECTS);
         }
 
@@ -88,6 +101,8 @@ class ConnexionController extends Controller
         // Nouvel identifiant de session : un identifiant volé ou imposé avant la
         // connexion ne sert plus à rien (fixation de session, ES-08).
         $request->session()->regenerate();
+
+        Journal::enregistrer(Journal::CONNEXION_REUSSIE, $email, $utilisateur);
 
         return redirect()->route('tableau-de-bord');
     }
@@ -112,6 +127,9 @@ class ConnexionController extends Controller
     private function refuserEmailInconnu(string $email, string $motDePasse): RedirectResponse
     {
         $cle = 'connexion-email-inconnu:' . $email;
+
+        // E-mail inconnu : pas d'auteur connu, la ligne du journal n'a pas d'utilisateur.
+        Journal::enregistrer(Journal::CONNEXION_ECHOUEE, 'Compte inconnu : ' . $email);
 
         if (RateLimiter::tooManyAttempts($cle, Utilisateur::NOMBRE_MAX_ECHECS)) {
             return $this->refuser(self::MESSAGE_TROP_DE_TENTATIVES);

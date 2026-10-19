@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Journal;
 use App\Models\Materiel;
 use App\Models\Pret;
 use App\Models\Role;
@@ -19,6 +20,10 @@ use Illuminate\View\View;
  *  1. Le middleware can: dans routes/web.php (pret.voir, pret.demander).
  *  2. PretPolicy pour chaque prêt précis : est-ce le sien, un élève de ses
  *     classes, le bon statut, pas sa propre demande (RA-03, RA-04).
+ *
+ * Journal (section 6) : validation, refus, annulation, sortie et retour sont
+ * écrits dans le journal de sécurité. Les refus d'accès (403) y sont écrits
+ * automatiquement par bootstrap/app.php.
  *
  * Protection contre l'IDOR (RA-03) : toutes les actions sur un prêt passent par
  * trouverPretAutorise(). Un prêt qui n'existe pas et un prêt qui appartient à
@@ -153,6 +158,8 @@ class PretController extends Controller
         $pret->validateur_id = $request->user()->id;
         $pret->save();
 
+        Journal::enregistrer(Journal::PRET_VALIDE, $this->decrire($pret));
+
         return $this->retourAuPret($pret)->with('succes', 'La demande a été validée.');
     }
 
@@ -174,6 +181,8 @@ class PretController extends Controller
         $pret->motif_refus = $champs['motif_refus'];
         $pret->save();
 
+        Journal::enregistrer(Journal::PRET_REFUSE, $this->decrire($pret) . ' – motif : ' . $pret->motif_refus);
+
         return $this->retourAuPret($pret)->with('succes', 'La demande a été refusée.');
     }
 
@@ -184,6 +193,8 @@ class PretController extends Controller
 
         $pret->statut = Pret::ANNULE;
         $pret->save();
+
+        Journal::enregistrer(Journal::PRET_ANNULE, $this->decrire($pret));
 
         return $this->retourAuPret($pret)->with('succes', 'Le prêt a été annulé.');
     }
@@ -207,6 +218,8 @@ class PretController extends Controller
 
             $materiel->etat = Materiel::PRETE;
             $materiel->save();
+
+            Journal::enregistrer(Journal::PRET_SORTI, $this->decrire($pret));
         });
 
         return $this->retourAuPret($pret)->with('succes', 'La sortie du matériel est enregistrée.');
@@ -233,6 +246,11 @@ class PretController extends Controller
 
             $pret->materiel->etat = $champs['etat_retour'];
             $pret->materiel->save();
+
+            Journal::enregistrer(
+                Journal::PRET_RENDU,
+                $this->decrire($pret) . ' – état au retour : ' . Materiel::LIBELLES_ETATS[$pret->etat_retour]
+            );
         });
 
         return $this->retourAuPret($pret)->with('succes', 'Le retour du matériel est enregistré.');
@@ -254,6 +272,14 @@ class PretController extends Controller
         }
 
         return $pret;
+    }
+
+    /** Texte court pour la colonne « objet » du journal, ex. « Prêt n° 12 (INV-PC-001, demandé par Emma Eleve) ». */
+    private function decrire(Pret $pret): string
+    {
+        return 'Prêt n° ' . $pret->id
+            . ' (' . $pret->materiel->numero_inventaire
+            . ', demandé par ' . $pret->demandeur->prenom . ' ' . $pret->demandeur->nom . ')';
     }
 
     private function retourAuPret(Pret $pret): RedirectResponse
