@@ -11,7 +11,7 @@ body {
 }
 
 .conteneur {
-    max-width: 640px;
+    max-width: 900px;
     margin: 48px auto;
     padding: 24px;
     background: #ffffff;
@@ -110,4 +110,117 @@ button {
 .menu-deconnexion button {
     margin-top: 0;
     padding: 6px 12px;
+}
+
+/* Catalogue du matériel. */
+.barre-recherche {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.barre-recherche label {
+    margin-top: 0;
+}
+
+.barre-recherche input[type="search"] {
+    width: auto;
+    flex: 1;
+}
+
+.barre-recherche button {
+    margin-top: 0;
+}
+
+.case-a-cocher {
+    font-weight: normal;
+}
+
+.case-a-cocher input {
+    width: auto;
+}
+
+.tableau {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+}
+
+.tableau th,
+.tableau td {
+    padding: 8px;
+    border-bottom: 1px solid #e4e7eb;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.actions button {
+    margin-top: 0;
+    padding: 4px 10px;
+    font-size: 0.9rem;
+}
+
+/* Pastilles d'état : une couleur par valeur de la colonne "etat". */
+.etat {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.etat-disponible { background: #e3f9e5; color: #05400a; }
+.etat-prete { background: #e8f0fe; color: #1e3a8a; }
+.etat-en_panne { background: #fde8e8; color: #9b1c1c; }
+.etat-en_reparation { background: #fff3c4; color: #8d2b0b; }
+.etat-archive { background: #e4e7eb; color: #52606d; }
+
+/* Lien qui ressemble à un bouton. */
+.bouton {
+    display: inline-block;
+    padding: 10px 16px;
+    border-radius: 4px;
+    background: #1d4ed8;
+    color: #ffffff;
+    text-decoration: none;
+}
+
+select {
+    width: 100%;
+    margin-top: 4px;
+    padding: 8px;
+    border: 1px solid #c3c8cf;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.lien-annuler {
+    margin-left: 12px;
+}
+
+/* Pagination générée par Laravel (vue pagination::default). */
+.pagination {
+    display: flex;
+    gap: 4px;
+    padding: 0;
+    list-style: none;
+}
+
+.pagination li > * {
+    display: block;
+    padding: 4px 10px;
+    border: 1px solid #c3c8cf;
+    border-radius: 4px;
+}
+
+.pagination .active > * {
+    background: #1d4ed8;
+    color: #ffffff;
 }

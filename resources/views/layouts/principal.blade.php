@@ -22,7 +22,7 @@
             <a href="{{ route('tableau-de-bord') }}">Tableau de bord</a>
 
             @can('materiel.voir')
-                <a href="{{ route('materiels') }}">Matériel</a>
+                <a href="{{ route('materiels.index') }}">Matériel</a>
             @endcan
 
             @can('compte.gerer')

@@ -15,6 +15,7 @@
 
 use App\Http\Controllers\Auth\ConnexionController;
 use App\Http\Controllers\Auth\MotDePasseController;
+use App\Http\Controllers\MaterielController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/tableau-de-bord');
@@ -39,9 +40,20 @@ Route::middleware(['auth', 'mot-de-passe.change'])->group(function () {
 
     // can:xxx = le Gate "xxx" doit répondre oui, sinon Laravel renvoie une erreur 403
     // (page resources/views/errors/403.blade.php). Contrôle côté serveur : RA-02.
-    // Pages provisoires : leur contenu arrive aux étapes 5 (matériel) et 7 (comptes, journal).
-    Route::view('/materiels', 'a-venir', ['titre' => 'Catalogue du matériel'])
-        ->middleware('can:materiel.voir')->name('materiels');
+
+    // Inventaire (BF-10 à BF-12). Pas de route de suppression : on archive (BF-11).
+    Route::get('/materiels', [MaterielController::class, 'index'])
+        ->middleware('can:materiel.voir')->name('materiels.index');
+
+    Route::middleware('can:materiel.gerer')->group(function () {
+        Route::get('/materiels/nouveau', [MaterielController::class, 'create'])->name('materiels.create');
+        Route::post('/materiels', [MaterielController::class, 'store'])->name('materiels.store');
+        Route::get('/materiels/{materiel}/modifier', [MaterielController::class, 'edit'])->name('materiels.edit');
+        Route::put('/materiels/{materiel}', [MaterielController::class, 'update'])->name('materiels.update');
+        Route::patch('/materiels/{materiel}/archiver', [MaterielController::class, 'archiver'])->name('materiels.archiver');
+    });
+
+    // Pages provisoires : leur contenu arrive à l'étape 7.
     Route::view('/comptes', 'a-venir', ['titre' => 'Gestion des comptes'])
         ->middleware('can:compte.gerer')->name('comptes');
     Route::view('/journal', 'a-venir', ['titre' => 'Journal de sécurité'])
