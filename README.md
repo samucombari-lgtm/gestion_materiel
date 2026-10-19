@@ -4,7 +4,7 @@
 ![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)
 ![PHP](https://img.shields.io/badge/PHP-8.4-777BB4?style=for-the-badge&logo=php&logoColor=white)
 ![MariaDB](https://img.shields.io/badge/MariaDB-11.8-003545?style=for-the-badge&logo=mariadb&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-16%20r%C3%A9ussis-brightgreen?style=for-the-badge)
+![Tests](https://img.shields.io/badge/tests-19%20r%C3%A9ussis-brightgreen?style=for-the-badge)
 ![Licence](https://img.shields.io/badge/licence-propri%C3%A9taire-lightgrey?style=for-the-badge)
 
 Application web qui permet au lycée de **prêter son matériel** (ordinateurs portables, vidéoprojecteurs, caméras, câbles…) en sachant à tout moment **qui a quoi, depuis quand, et qui a le droit de faire quoi**.
@@ -217,10 +217,11 @@ L'enseignant est dans la classe du 1er élève mais pas dans celle du 2e : cela 
 ## Tests automatiques
 
 ```bash
-php artisan test                                        # tous les tests (16)
+php artisan test                                        # tous les tests (19)
 php artisan test --filter=AutorisationsTest             # le tableau 5.7 du cahier des charges
 php artisan test --filter=CoherenceVisibilitePretsTest  # liste et détail des prêts toujours d'accord
 php artisan test --filter=CreerAdministrateurTest       # commande de création du premier administrateur
+php artisan test --filter=EnTetesSecuriteTest           # en-têtes de sécurité HTTP (audit OWASP ZAP)
 ```
 
 Les tests tournent sur une base **SQLite en mémoire** (voir `phpunit.xml`) : ils ne touchent jamais la base MariaDB.
@@ -276,6 +277,9 @@ Liste de vérification avant la mise en ligne :
 - [ ] `php artisan migrate --force` **sans** `--seed` : les comptes de test ne doivent pas exister en production ;
 - [ ] créer le premier compte administrateur (voir ci-dessous) ;
 - [ ] `php artisan config:cache` et `php artisan route:cache` ;
+- [ ] PHP : `expose_php = Off` dans `php.ini` (ne pas révéler la version de PHP) ;
+- [ ] Apache : `ServerTokens Prod` et `ServerSignature Off` (ne pas révéler la version d'Apache), et ajouter `Header always set X-Content-Type-Options "nosniff"` pour les fichiers de `public/` (CSS, JS), qui ne passent pas par Laravel ;
+- [ ] vérifier que l'en-tête `Strict-Transport-Security` (HSTS) apparaît bien en HTTPS. Si Apache est placé derrière un autre serveur (proxy), configurer les *trusted proxies* de Laravel, sinon l'application croit être en HTTP et n'envoie pas HSTS ;
 - [ ] configurer l'envoi d'e-mails (`MAIL_*`) pour les rappels de retour (BF-23, pas encore développé).
 
 ### Créer le premier administrateur

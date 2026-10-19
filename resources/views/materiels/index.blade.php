@@ -78,17 +78,19 @@
                             </td>
                         @endcan
                         @can('materiel.gerer')
-                            <td class="actions">
-                                <a href="{{ route('materiels.edit', $materiel) }}">Modifier</a>
+                            <td>
+                                <div class="actions">
+                                    <a href="{{ route('materiels.edit', $materiel) }}">Modifier</a>
 
-                                @if ($materiel->peutEtreArchive())
-                                    <form method="POST" action="{{ route('materiels.archiver', $materiel) }}"
-                                          onsubmit="return confirm('Archiver ce matériel ? Il disparaîtra du catalogue.');">
-                                        @csrf
-                                        @method('PATCH')
-                                        <button type="submit" class="bouton-secondaire">Archiver</button>
-                                    </form>
-                                @endif
+                                    @if ($materiel->peutEtreArchive())
+                                        <form method="POST" action="{{ route('materiels.archiver', $materiel) }}"
+                                              data-confirmation="Archiver ce matériel ? Il disparaîtra du catalogue.">
+                                            @csrf
+                                            @method('PATCH')
+                                            <button type="submit" class="bouton-secondaire">Archiver</button>
+                                        </form>
+                                    @endif
+                                </div>
                             </td>
                         @endcan
                     </tr>

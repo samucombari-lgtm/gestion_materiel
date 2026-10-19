@@ -15,6 +15,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('titre') – Gestion du matériel</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    {{-- Confirmations avant certaines actions (formulaires avec data-confirmation). --}}
+    <script src="{{ asset('js/confirmation.js') }}" defer></script>
 </head>
 <body>
     @auth

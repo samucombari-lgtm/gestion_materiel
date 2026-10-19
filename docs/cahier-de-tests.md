@@ -147,12 +147,15 @@ Les tests tournent sur une base SQLite en mémoire : ils ne modifient pas la bas
 | A-14 | La commande crée un administrateur avec un mot de passe temporaire | Mise en production | `CreerAdministrateurTest` |
 | A-15 | La commande refuse un e-mail déjà utilisé ou invalide | ES-10 | `CreerAdministrateurTest` |
 | A-16 | `that true is true` (exemple fourni par Laravel) | — | `Unit/ExampleTest` |
+| A-17 | Les en-têtes de sécurité sont présents sur toutes les sortes de pages, sans `X-Powered-By` | Audit ZAP | `EnTetesSecuriteTest` |
+| A-18 | HSTS n'est envoyé qu'en HTTPS | ES-09 | `EnTetesSecuriteTest` |
+| A-19 | Aucune vue ne contient de JavaScript ou de CSS dans le HTML (sinon la CSP le bloquerait) | Audit ZAP | `EnTetesSecuriteTest` |
 
 **Résultat** :
 
 | Date | Exécuté par | Résultat | Statut |
 | --- | --- | --- | --- |
-| 19/10/2026 | Claude Code (développement) | `Tests: 16 passed (77 assertions)` | ✅ OK |
+| 19/10/2026 | Claude Code (développement) | `Tests: 19 passed (173 assertions)` | ✅ OK |
 | | Samuel Combari | | ☐ OK ☐ KO 📷 |
 
 **Vérification que les tests détectent les erreurs** (sabotage volontaire, puis restauration du code) :
@@ -185,7 +188,7 @@ Les tests tournent sur une base SQLite en mémoire : ils ne modifient pas la bas
 | T-CON-14 | ES-01 | `SELECT email, LEFT(mot_de_passe_hash, 7) FROM utilisateurs;` | Tous les hachages commencent par `$2y$12$` (bcrypt), aucun mot de passe en clair | | ☐ OK ☐ KO 📷 |
 | T-CON-15 | ES-08 | F12 → *Stockage* → *Cookies* : noter la valeur du cookie de session avant et après la connexion | La valeur **change** à la connexion (nouvel identifiant de session) | | ☐ OK ☐ KO |
 | T-CON-16 | ES-08 | Même écran : regarder les attributs du cookie de session | `HttpOnly` coché, `SameSite` = `Lax`. (`Secure` seulement en HTTPS, voir T-SEC-09) | | ☐ OK ☐ KO |
-| T-CON-17 | ES-07 | Déconnexion forgée : ouvrir `/deconnexion` dans la barre d'adresse (requête GET) | La déconnexion **n'a pas lieu** (page d'erreur 405) : elle n'est possible qu'en POST avec jeton CSRF | | ☐ OK ☐ KO |
+| T-CON-17 | ES-07 | Déconnexion forgée : ouvrir `/deconnexion` dans la barre d'adresse (requête GET) | La déconnexion **n'a pas lieu** (page « Action impossible », code 405) : elle n'est possible qu'en POST avec jeton CSRF | | ☐ OK ☐ KO |
 
 ---
 
@@ -406,7 +409,7 @@ Les tests tournent sur une base SQLite en mémoire : ils ne modifient pas la bas
 | T-SEC-03 | ES-06 (XSS) | Connexion avec l'e-mail `"><script>alert(1)</script>@a.fr` (supprimer `type="email"`), puis Adam ouvre le journal | Pas d'alerte, ni sur la page de connexion, ni dans le journal | | ☐ OK ☐ KO |
 | T-SEC-04 | ES-05 (SQL) | Catalogue : rechercher `' OR '1'='1` | Aucune erreur, « Aucun matériel trouvé. » (le texte est cherché tel quel) 📷 | | ☐ OK ☐ KO |
 | T-SEC-05 | ES-05 (SQL) | Connexion avec l'e-mail `admin@lycee.test' -- ` | « Identifiants incorrects. » (ou « n'est pas valide »), aucune erreur SQL | | ☐ OK ☐ KO |
-| T-SEC-06 | ES-07 (CSRF) | F12 sur un formulaire (ex. Archiver) : supprimer le champ caché `_token`, envoyer | Page d'erreur **419**, l'action n'est pas faite 📷 | | ☐ OK ☐ KO |
+| T-SEC-06 | ES-07 (CSRF) | F12 sur un formulaire (ex. Archiver) : supprimer le champ caché `_token`, envoyer | Page « Page expirée », code **419**, l'action n'est pas faite 📷 | | ☐ OK ☐ KO |
 | T-SEC-07 | RA-02 | Emma : F12 sur le formulaire de demande, ajouter un champ `<input name="demandeur_id" value="2">`, envoyer | Le prêt est créé au nom d'**Emma**, pas de Bruno | | ☐ OK ☐ KO |
 | T-SEC-08 | RA-03 (IDOR) | Voir T-PRE-05 et T-PRE-06 | — | | ☐ OK ☐ KO |
 | T-SEC-09 | ES-08, ES-09 | Sur le serveur HTTPS (quand il existera) : vérifier le cadenas et l'attribut `Secure` du cookie | Cadenas présent, cookie `Secure` (**non testable en local**, HTTPS à préciser) | | ☐ OK ☐ KO ☐ Non testable |
@@ -414,6 +417,8 @@ Les tests tournent sur une base SQLite en mémoire : ils ne modifient pas la bas
 | T-SEC-11 | Section 6 | MariaDB : `SELECT COUNT(*) FROM sessions WHERE payload LIKE '%Eleve-Test-2026%';` après des connexions | `0` (sessions chiffrées, aucun mot de passe en clair) | | ☐ OK ☐ KO |
 | T-SEC-12 | Audit | Analyse OWASP ZAP (*Automated Scan*) sur http://127.0.0.1:8000, connecté puis non connecté | Aucune alerte « High » d'injection SQL ou de XSS (critère d'acceptation, section 9). Joindre le rapport ZAP | | ☐ OK ☐ KO 📷 |
 | T-SEC-13 | Affichage | Ouvrir l'application sur un téléphone (ou F12 → mode responsive) | Pages lisibles, menu qui passe à la ligne, formulaires utilisables | | ☐ OK ☐ KO |
+| T-SEC-14 | Audit ZAP | F12 → *Réseau* → recharger → cliquer la 1re requête (le document) → *En-têtes de réponse* | Présents : `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, `Content-Security-Policy: default-src 'self'; …`. **Absent** : `X-Powered-By`. **Absent en HTTP** : `Strict-Transport-Security` 🤖 📷 | | ☐ OK ☐ KO |
+| T-SEC-15 | CSP | Gaëlle : catalogue → « Archiver » ; Emma : son prêt → « Annuler le prêt » ; Adam : « Désactiver » un compte. Chaque fois, cliquer **Annuler** dans la fenêtre de confirmation. Puis F12 → *Console* | La confirmation s'affiche, rien n'est fait après « Annuler ». **Aucune** erreur « Content Security Policy » dans la console |  | ☐ OK ☐ KO |
 
 ---
 
@@ -444,7 +449,6 @@ Ces besoins du cahier des charges **ne sont pas testables** dans cette version :
 
 **Limites connues**, sans incidence sur la sécurité :
 
-- Les pages d'erreur **405** (mauvaise méthode) et **419** (jeton CSRF expiré) sont celles de Laravel, en anglais.
 - Le cookie `Secure` ne sera actif qu'une fois l'application en HTTPS (`SESSION_SECURE_COOKIE=true`).
 
 ---
@@ -455,7 +459,7 @@ Ces besoins du cahier des charges **ne sont pas testables** dans cette version :
 
 | Section | Nombre de tests | OK | KO | Non testables |
 | --- | --- | --- | --- | --- |
-| 2. Tests automatiques | 16 | | | |
+| 2. Tests automatiques | 19 | | | |
 | 3. Connexion et sessions | 17 | | | |
 | 4. Mot de passe temporaire | 9 | | | |
 | 5. Autorisations et erreurs | 14 | | | |
@@ -464,9 +468,9 @@ Ces besoins du cahier des charges **ne sont pas testables** dans cette version :
 | 8. Tableau de bord | 5 | | | |
 | 9. Journal | 13 | | | |
 | 10. Comptes | 19 | | | |
-| 11. Sécurité | 13 | | | |
+| 11. Sécurité | 15 | | | |
 | 12. Installation | 5 | | | |
-| **Total** | **161** | | | |
+| **Total** | **166** | | | |
 
 **Critères d'acceptation du cahier des charges (section 9)** :
 

@@ -156,6 +156,7 @@ button {
     vertical-align: middle;
 }
 
+/* Le flex est sur un <div> DANS la cellule : sur le <td> lui-même, il casse l'alignement du tableau. */
 .actions {
     display: flex;
     align-items: center;

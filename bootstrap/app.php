@@ -19,6 +19,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Utilisateur déjà connecté sur la page de connexion (middleware "guest") → tableau de bord.
         $middleware->redirectUsersTo('/tableau-de-bord');
 
+        // En-têtes de sécurité HTTP sur TOUTES les réponses (audit OWASP ZAP).
+        $middleware->append(\App\Http\Middleware\EnTetesSecurite::class);
+
         // Nom court pour utiliser nos middlewares dans routes/web.php.
         $middleware->alias([
             'mot-de-passe.change' => \App\Http\Middleware\ExigerChangementMotDePasse::class,

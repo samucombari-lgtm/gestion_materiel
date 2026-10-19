@@ -62,7 +62,7 @@ flowchart TB
         WEB["Serveur web Apache — à confirmer<br/>HTTPS : certificat à préciser"]
 
         subgraph Laravel["Application Laravel 12 — PHP 8.4"]
-            ROUTES["routes/web.php<br/>+ middlewares : auth, guest,<br/>mot-de-passe.change, can:…, throttle"]
+            ROUTES["routes/web.php<br/>+ middlewares : auth, guest,<br/>mot-de-passe.change, can:…, throttle,<br/>EnTetesSecurite (toutes les réponses)"]
             CTRL["Contrôleurs<br/>ConnexionController, MotDePasseController,<br/>TableauDeBordController, MaterielController,<br/>PretController, CompteController, JournalController"]
             AUTZ["Autorisations<br/>Gates : 1 par permission (AppServiceProvider)<br/>Policies : PretPolicy, UtilisateurPolicy"]
             MODELES["Modèles Eloquent<br/>Utilisateur, Role, Permission, Classe,<br/>Materiel, Pret, Journal"]
@@ -149,7 +149,7 @@ Le détail complet (matrice, règles RA-01 à RA-08, procédure pour ajouter une
 #### Modèles et vues
 
 - **Eloquent** : chaque modèle indique sa table française (`protected $table = 'prets'`). Les colonnes sensibles ne sont **pas** remplissables d'un coup par un formulaire. Par exemple, `statut`, `validateur_id` et `mot_de_passe_hash` ne changent que par du code écrit exprès.
-- **Blade** : tout est affiché avec `{{ }}`, qui échappe le HTML (ES-06). Chaque formulaire contient `@csrf` (ES-07). `@can` cache les boutons inutiles, pour le confort seulement : la protection réelle reste sur le serveur.
+- **Blade** : tout est affiché avec `{{ }}`, qui échappe le HTML (ES-06). Aucune vue ne contient de JavaScript ou de CSS écrit dans le HTML : la *Content-Security-Policy* l'interdirait. Les confirmations (« Archiver ce matériel ? ») passent par l'attribut `data-confirmation` et le fichier `public/js/confirmation.js`. Chaque formulaire contient `@csrf` (ES-07). `@can` cache les boutons inutiles, pour le confort seulement : la protection réelle reste sur le serveur.
 
 #### Commande du premier administrateur
 
@@ -185,7 +185,8 @@ Le détail complet (matrice, règles RA-01 à RA-08, procédure pour ajouter une
 | ES-08 Session | `session()->regenerate()` après connexion ; cookie `HttpOnly` et `SameSite=lax` ; `Secure` **à activer avec HTTPS** ; sessions chiffrées | — |
 | ES-09 HTTPS | Sur le serveur web — **à configurer** | — |
 | ES-10 Validation | `$request->validate()` dans chaque contrôleur | — |
-| ES-11 Pas d'erreur technique | `APP_DEBUG=false` en production ; pages 403, 404, 429 en français | — |
+| ES-11 Pas d'erreur technique | `APP_DEBUG=false` en production ; pages 403, 404, 405, 419, 429, 500 en français, sans détail technique | — |
+| En-têtes HTTP (audit OWASP ZAP) | Middleware `EnTetesSecurite` sur toutes les réponses : `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, `Content-Security-Policy` stricte (tout depuis le serveur, aucun script ni style dans le HTML), HSTS en HTTPS seulement, `X-Powered-By` retiré | `EnTetesSecuriteTest` + vérification dans Chromium |
 | RA-01 / RA-02 Refus par défaut, contrôle serveur | Gates + middleware `can:` sur chaque route | `AutorisationsTest` |
 | RA-03 Propriétaire (IDOR) | `PretPolicy::view` + `trouverPretAutorise()` | `AutorisationsTest`, `CoherenceVisibilitePretsTest` |
 | RA-04 Séparation des tâches | `PretPolicy::valider` | `AutorisationsTest` |

@@ -80,7 +80,7 @@
                 <p>Rôle actuel : <strong>{{ $compte->role->libelle() }}</strong>.
                    Changer le rôle déconnecte immédiatement la personne.</p>
                 <form method="POST" action="{{ route('comptes.role', $compte) }}"
-                      onsubmit="return confirm('Changer le rôle ? La personne sera déconnectée.');">
+                      data-confirmation="Changer le rôle ? La personne sera déconnectée.">
                     @csrf
                     @method('PATCH')
                     <label for="nouveau_role">Nouveau rôle</label>

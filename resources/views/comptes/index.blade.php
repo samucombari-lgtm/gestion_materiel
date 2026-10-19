@@ -90,31 +90,33 @@
                                 {{ $compte->actif ? 'Actif' : 'Désactivé' }}
                             </span>
                         </td>
-                        <td class="actions">
-                            @if ($compte->id === auth()->id())
-                                <em>Votre compte</em>
-                            @endif
+                        <td>
+                            <div class="actions">
+                                @if ($compte->id === auth()->id())
+                                    <em>Votre compte</em>
+                                @endif
 
-                            @can('update', $compte)
-                                <a href="{{ route('comptes.edit', $compte) }}">Modifier</a>
-                            @endcan
+                                @can('update', $compte)
+                                    <a href="{{ route('comptes.edit', $compte) }}">Modifier</a>
+                                @endcan
 
-                            @can('desactiver', $compte)
-                                <form method="POST" action="{{ route('comptes.desactiver', $compte) }}"
-                                      onsubmit="return confirm('Désactiver ce compte ? La personne sera déconnectée et ses demandes en cours annulées.');">
-                                    @csrf
-                                    @method('PATCH')
-                                    <button type="submit" class="bouton-secondaire">Désactiver</button>
-                                </form>
-                            @endcan
+                                @can('desactiver', $compte)
+                                    <form method="POST" action="{{ route('comptes.desactiver', $compte) }}"
+                                          data-confirmation="Désactiver ce compte ? La personne sera déconnectée et ses demandes en cours annulées.">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="bouton-secondaire">Désactiver</button>
+                                    </form>
+                                @endcan
 
-                            @can('reactiver', $compte)
-                                <form method="POST" action="{{ route('comptes.reactiver', $compte) }}">
-                                    @csrf
-                                    @method('PATCH')
-                                    <button type="submit" class="bouton-secondaire">Réactiver</button>
-                                </form>
-                            @endcan
+                                @can('reactiver', $compte)
+                                    <form method="POST" action="{{ route('comptes.reactiver', $compte) }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="bouton-secondaire">Réactiver</button>
+                                    </form>
+                                @endcan
+                            </div>
                         </td>
                     </tr>
                 @endforeach

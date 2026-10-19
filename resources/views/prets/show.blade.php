@@ -84,7 +84,7 @@
 
     @can('annuler', $pret)
         <form method="POST" action="{{ route('prets.annuler', $pret->id) }}"
-              onsubmit="return confirm('Annuler ce prêt ?');">
+              data-confirmation="Annuler ce prêt ?">
             @csrf
             @method('PATCH')
             <button type="submit" class="bouton-secondaire">Annuler le prêt</button>
