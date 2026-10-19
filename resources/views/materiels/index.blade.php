@@ -53,6 +53,9 @@
                     <th>N° d'inventaire</th>
                     <th>État</th>
                     <th>Disponibilité</th>
+                    @can('pret.demander')
+                        <th>Prêt</th>
+                    @endcan
                     @can('materiel.gerer')
                         <th>Actions</th>
                     @endcan
@@ -66,6 +69,14 @@
                         <td>{{ $materiel->numero_inventaire }}</td>
                         <td><span class="etat etat-{{ $materiel->etat }}">{{ $materiel->libelleEtat() }}</span></td>
                         <td>{{ $materiel->estDisponible() ? 'Oui' : 'Non' }}</td>
+                        @can('pret.demander')
+                            <td>
+                                {{-- Un matériel prêté peut être réservé pour des dates plus tard. --}}
+                                @if ($materiel->estDisponible() || $materiel->estPrete())
+                                    <a href="{{ route('prets.create', ['materiel' => $materiel->id]) }}">Emprunter</a>
+                                @endif
+                            </td>
+                        @endcan
                         @can('materiel.gerer')
                             <td class="actions">
                                 <a href="{{ route('materiels.edit', $materiel) }}">Modifier</a>

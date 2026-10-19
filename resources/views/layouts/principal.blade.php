@@ -25,6 +25,10 @@
                 <a href="{{ route('materiels.index') }}">Matériel</a>
             @endcan
 
+            @can('pret.voir')
+                <a href="{{ route('prets.index') }}">Prêts</a>
+            @endcan
+
             @can('compte.gerer')
                 <a href="{{ route('comptes') }}">Comptes</a>
             @endcan

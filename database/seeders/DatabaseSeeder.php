@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             PermissionSeeder::class,
             UtilisateurTestSeeder::class,
             MaterielTestSeeder::class,
+            PretTestSeeder::class,
         ]);
     }
 }

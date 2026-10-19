@@ -90,4 +90,18 @@ class PretPolicy
         return $pret->demandeur_id === $utilisateur->id
             && $pret->statut === Pret::EN_ATTENTE;
     }
+
+    /** Enregistrer la sortie (BF-22) : gestionnaire, prêt validé. */
+    public function sortir(Utilisateur $utilisateur, Pret $pret): bool
+    {
+        return $utilisateur->aLaPermission('pret.sortie_retour')
+            && $pret->statut === Pret::VALIDE;
+    }
+
+    /** Enregistrer le retour (BF-22) : gestionnaire, prêt sorti. */
+    public function rendre(Utilisateur $utilisateur, Pret $pret): bool
+    {
+        return $utilisateur->aLaPermission('pret.sortie_retour')
+            && $pret->statut === Pret::SORTI;
+    }
 }

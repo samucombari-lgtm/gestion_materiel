@@ -224,3 +224,26 @@ select {
     background: #1d4ed8;
     color: #ffffff;
 }
+
+/* Prêts : pastilles de statut, tableau de détail, bouton de refus. */
+.statut {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.statut-en_attente { background: #fff3c4; color: #8d2b0b; }
+.statut-valide { background: #e8f0fe; color: #1e3a8a; }
+.statut-refuse { background: #fde8e8; color: #9b1c1c; }
+.statut-sorti { background: #ede9fe; color: #4c1d95; }
+.statut-rendu { background: #e3f9e5; color: #05400a; }
+.statut-annule { background: #e4e7eb; color: #52606d; }
+
+.tableau-detail th {
+    width: 200px;
+}
+
+.bouton-danger {
+    background: #b91c1c;
+}

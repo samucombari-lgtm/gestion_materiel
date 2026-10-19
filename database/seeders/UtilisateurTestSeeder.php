@@ -7,9 +7,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * Crée un compte de test par rôle, et une classe qui contient l'élève et
- * l'enseignant de test (pour tester plus tard « l'enseignant valide les élèves
- * de ses classes »).
+ * Crée un compte de test par rôle, plus un 2e élève, et les classes de test.
+ *
+ * Les classes servent à tester les périmètres :
+ *  - « 1re STMG 2 » : Emma (élève) et Eric (enseignant) → Eric voit et valide les prêts d'Emma ;
+ *  - « 2nde 3 » : Bruno (2e élève) seul → Eric ne voit pas ses prêts, et Emma
+ *    non plus (test IDOR « élève A ouvre le prêt de l'élève B », section 5.7).
  *
  * SÉCURITÉ : ces comptes ont des mots de passe connus de tous (ils sont écrits
  * ici). Le seeder refuse donc de tourner en production (APP_ENV=production).
@@ -23,13 +26,12 @@ use Illuminate\Support\Facades\Hash;
 class UtilisateurTestSeeder extends Seeder
 {
     private const COMPTES_DE_TEST = [
-        ['prenom' => 'Emma',   'nom' => 'Eleve',        'email' => 'eleve@lycee.test',        'role' => 'eleve',          'mot_de_passe' => 'Eleve-Test-2026'],
-        ['prenom' => 'Eric',   'nom' => 'Enseignant',   'email' => 'enseignant@lycee.test',   'role' => 'enseignant',     'mot_de_passe' => 'Enseignant-Test-2026'],
-        ['prenom' => 'Gaelle', 'nom' => 'Gestionnaire', 'email' => 'gestionnaire@lycee.test', 'role' => 'gestionnaire',   'mot_de_passe' => 'Gestionnaire-Test-2026'],
-        ['prenom' => 'Adam',   'nom' => 'Admin',        'email' => 'admin@lycee.test',        'role' => 'administrateur', 'mot_de_passe' => 'Admin-Test-2026'],
+        ['prenom' => 'Emma',   'nom' => 'Eleve',        'email' => 'eleve@lycee.test',        'role' => 'eleve',          'mot_de_passe' => 'Eleve-Test-2026',        'classe' => '1re STMG 2'],
+        ['prenom' => 'Bruno',  'nom' => 'Eleve',        'email' => 'eleve2@lycee.test',       'role' => 'eleve',          'mot_de_passe' => 'Eleve2-Test-2026',       'classe' => '2nde 3'],
+        ['prenom' => 'Eric',   'nom' => 'Enseignant',   'email' => 'enseignant@lycee.test',   'role' => 'enseignant',     'mot_de_passe' => 'Enseignant-Test-2026',   'classe' => '1re STMG 2'],
+        ['prenom' => 'Gaelle', 'nom' => 'Gestionnaire', 'email' => 'gestionnaire@lycee.test', 'role' => 'gestionnaire',   'mot_de_passe' => 'Gestionnaire-Test-2026', 'classe' => null],
+        ['prenom' => 'Adam',   'nom' => 'Admin',        'email' => 'admin@lycee.test',        'role' => 'administrateur', 'mot_de_passe' => 'Admin-Test-2026',        'classe' => null],
     ];
-
-    private const CLASSE_DE_TEST = '1re STMG 2';
 
     public function run(): void
     {
@@ -49,25 +51,27 @@ class UtilisateurTestSeeder extends Seeder
                     'mot_de_passe_hash'         => Hash::make($compte['mot_de_passe']),
                     'role_id'                   => $idsRoles[$compte['role']],
                     'actif'                     => true,
+                    'echecs_connexion'          => 0,
+                    'bloque_jusqua'             => null,
                     'doit_changer_mot_de_passe' => false,
                     'created_at'                => now(),
                     'updated_at'                => now(),
                 ]
             );
+
+            if ($compte['classe'] !== null) {
+                $this->ajouterALaClasse($compte['email'], $compte['classe']);
+            }
         }
+    }
 
-        DB::table('classes')->updateOrInsert(['nom' => self::CLASSE_DE_TEST]);
-        $idClasse = DB::table('classes')->where('nom', self::CLASSE_DE_TEST)->value('id');
+    private function ajouterALaClasse(string $email, string $nomClasse): void
+    {
+        DB::table('classes')->updateOrInsert(['nom' => $nomClasse]);
 
-        $idsMembresDeLaClasse = DB::table('utilisateurs')
-            ->whereIn('email', ['eleve@lycee.test', 'enseignant@lycee.test'])
-            ->pluck('id');
-
-        foreach ($idsMembresDeLaClasse as $idUtilisateur) {
-            DB::table('classe_utilisateur')->insertOrIgnore([
-                'classe_id'      => $idClasse,
-                'utilisateur_id' => $idUtilisateur,
-            ]);
-        }
+        DB::table('classe_utilisateur')->insertOrIgnore([
+            'classe_id'      => DB::table('classes')->where('nom', $nomClasse)->value('id'),
+            'utilisateur_id' => DB::table('utilisateurs')->where('email', $email)->value('id'),
+        ]);
     }
 }

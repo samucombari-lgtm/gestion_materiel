@@ -16,6 +16,7 @@
 use App\Http\Controllers\Auth\ConnexionController;
 use App\Http\Controllers\Auth\MotDePasseController;
 use App\Http\Controllers\MaterielController;
+use App\Http\Controllers\PretController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/tableau-de-bord');
@@ -52,6 +53,26 @@ Route::middleware(['auth', 'mot-de-passe.change'])->group(function () {
         Route::put('/materiels/{materiel}', [MaterielController::class, 'update'])->name('materiels.update');
         Route::patch('/materiels/{materiel}/archiver', [MaterielController::class, 'archiver'])->name('materiels.archiver');
     });
+
+    // Prêts (BF-20 à BF-24). {id} : un nombre de 1 à 9 chiffres (un nombre plus long dépasserait
+    // la taille d'un entier PHP et provoquerait une erreur).
+    // Les actions sur un prêt précis sont contrôlées par PretPolicy dans le contrôleur :
+    // prêt inexistant ou hors périmètre → même erreur 403 (protection contre l'IDOR).
+    Route::middleware('can:pret.voir')->group(function () {
+        Route::get('/prets', [PretController::class, 'index'])->name('prets.index');
+        Route::get('/prets/{id}', [PretController::class, 'show'])->where('id', '[0-9]{1,9}')->name('prets.show');
+    });
+
+    Route::middleware('can:pret.demander')->group(function () {
+        Route::get('/prets/nouveau', [PretController::class, 'create'])->name('prets.create');
+        Route::post('/prets', [PretController::class, 'store'])->name('prets.store');
+    });
+
+    Route::patch('/prets/{id}/valider', [PretController::class, 'valider'])->where('id', '[0-9]{1,9}')->name('prets.valider');
+    Route::patch('/prets/{id}/refuser', [PretController::class, 'refuser'])->where('id', '[0-9]{1,9}')->name('prets.refuser');
+    Route::patch('/prets/{id}/annuler', [PretController::class, 'annuler'])->where('id', '[0-9]{1,9}')->name('prets.annuler');
+    Route::patch('/prets/{id}/sortie', [PretController::class, 'sortir'])->where('id', '[0-9]{1,9}')->name('prets.sortir');
+    Route::patch('/prets/{id}/retour', [PretController::class, 'rendre'])->where('id', '[0-9]{1,9}')->name('prets.rendre');
 
     // Pages provisoires : leur contenu arrive à l'étape 7.
     Route::view('/comptes', 'a-venir', ['titre' => 'Gestion des comptes'])

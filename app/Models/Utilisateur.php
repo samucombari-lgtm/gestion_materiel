@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
@@ -119,13 +120,36 @@ class Utilisateur extends Authenticatable
      */
     public function enseigneA(Utilisateur $eleve): bool
     {
-        if (! $this->aLeRole(Role::ENSEIGNANT) || ! $eleve->aLeRole(Role::ELEVE)) {
+        if (! $this->aLeRole(Role::ENSEIGNANT)) {
             return false;
         }
 
-        $idsClassesDeLEleve = $eleve->classes()->pluck('classes.id');
+        return $this->idsElevesDeSesClasses()->contains($eleve->id);
+    }
 
-        return $this->classes()->whereIn('classes.id', $idsClassesDeLEleve)->exists();
+    /**
+     * Identifiants des élèves qui sont dans au moins une classe de cet utilisateur.
+     * Seule définition de « élèves de ses classes » : utilisée par enseigneA()
+     * (donc PretPolicy) et par Pret::visiblesPar() (la liste des prêts).
+     */
+    public function idsElevesDeSesClasses(): Collection
+    {
+        $idsDeSesClasses = $this->classes()->pluck('classes.id');
+
+        return Utilisateur::query()
+            ->whereHas('role', function ($role) {
+                $role->where('nom', Role::ELEVE);
+            })
+            ->whereHas('classes', function ($classe) use ($idsDeSesClasses) {
+                $classe->whereIn('classes.id', $idsDeSesClasses);
+            })
+            ->pluck('id');
+    }
+
+    /** Nombre de prêts en attente, validés ou sortis : sert à la limite RA-07. */
+    public function nombrePretsEnCours(): int
+    {
+        return $this->pretsDemandes()->whereIn('statut', Pret::STATUTS_EN_COURS)->count();
     }
 
     public function estBloque(): bool
