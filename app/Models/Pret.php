@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\AppartientAUnEtablissement;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,9 +14,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *   en_attente → valide ou refuse → sorti → rendu   (ou annule tant qu'il n'est pas sorti)
  *
  * Les droits sur un prêt précis sont dans app/Policies/PretPolicy.php.
+ * L'isolation entre établissements est faite avant, par EtablissementScope :
+ * un prêt d'un autre lycée n'est même pas trouvé (404).
  */
 class Pret extends Model
 {
+    use AppartientAUnEtablissement;
+
     public const EN_ATTENTE = 'en_attente';
     public const VALIDE = 'valide';
     public const REFUSE = 'refuse';
@@ -55,6 +60,7 @@ class Pret extends Model
     {
         // Les clés en entier : les Policies les comparent avec === à $utilisateur->id.
         return [
+            'etablissement_id' => 'integer',
             'materiel_id' => 'integer',
             'demandeur_id' => 'integer',
             'validateur_id' => 'integer',

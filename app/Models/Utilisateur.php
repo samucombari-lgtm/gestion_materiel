@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\AppartientAUnEtablissement;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -19,9 +20,14 @@ use Illuminate\Support\Facades\Hash;
  *
  * Notifiable : servira à envoyer les e-mails (réinitialisation du mot de passe,
  * rappels de retour).
+ *
+ * AppartientAUnEtablissement : un compte ne voit que les comptes de son
+ * établissement. Le super-administrateur n'a pas d'établissement
+ * (etablissement_id vide) et les voit tous.
  */
 class Utilisateur extends Authenticatable
 {
+    use AppartientAUnEtablissement;
     use Notifiable;
 
     /** Blocage du compte après 5 échecs, pendant 15 minutes (ES-03). */
@@ -64,6 +70,7 @@ class Utilisateur extends Authenticatable
     protected function casts(): array
     {
         return [
+            'etablissement_id' => 'integer',
             'role_id' => 'integer',
             'actif' => 'boolean',
             'doit_changer_mot_de_passe' => 'boolean',
@@ -97,8 +104,12 @@ class Utilisateur extends Authenticatable
     }
 
     /**
-     * RA-05 : vrai si ce compte est le seul administrateur actif.
+     * RA-05 : vrai si ce compte est le seul administrateur actif de SON établissement.
      * On ne peut alors ni le désactiver, ni lui retirer le rôle administrateur.
+     *
+     * Le filtre sur l'établissement est écrit ici et pas laissé à EtablissementScope :
+     * quand c'est un super-admin qui agit, le scope ne filtre rien, et les
+     * administrateurs des autres lycées seraient comptés.
      */
     public function estDernierAdministrateurActif(): bool
     {
@@ -107,6 +118,7 @@ class Utilisateur extends Authenticatable
         }
 
         $nombreAdministrateursActifs = Utilisateur::where('actif', true)
+            ->where('etablissement_id', $this->etablissement_id)
             ->whereHas('role', function ($role) {
                 $role->where('nom', Role::ADMINISTRATEUR);
             })
@@ -143,6 +155,12 @@ class Utilisateur extends Authenticatable
     public function aLeRole(string $nomRole): bool
     {
         return $this->role->nom === $nomRole;
+    }
+
+    /** Le super-administrateur voit tous les établissements (EtablissementScope ne le filtre pas). */
+    public function estSuperAdmin(): bool
+    {
+        return $this->aLeRole(Role::SUPER_ADMIN);
     }
 
     /**

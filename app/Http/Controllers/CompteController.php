@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Exists;
 use Illuminate\View\View;
 
 /**
@@ -164,7 +165,7 @@ class CompteController extends Controller
         }
 
         $champs = $request->validate(
-            ['role_id' => ['required', 'integer', Rule::exists('roles', 'id')]],
+            ['role_id' => ['required', 'integer', $this->regleRoleAttribuable()]],
             ['role_id.required' => 'Choisissez un rôle.', 'role_id.exists' => 'Ce rôle n\'existe pas.']
         );
 
@@ -267,7 +268,7 @@ class CompteController extends Controller
         ];
 
         if ($avecRole) {
-            $regles['role_id'] = ['required', 'integer', Rule::exists('roles', 'id')];
+            $regles['role_id'] = ['required', 'integer', $this->regleRoleAttribuable()];
         }
 
         $champs = $request->validate($regles, [
@@ -301,11 +302,21 @@ class CompteController extends Controller
         $compte->classes()->sync($idsClasses);
     }
 
+    /**
+     * Le rôle envoyé doit exister ET être dans la liste blanche Role::ATTRIBUABLES_PAR_FORMULAIRE.
+     * Sans le whereIn, un administrateur pourrait envoyer à la main l'id du rôle
+     * super_admin (requête fabriquée) et donner l'accès à tous les établissements.
+     */
+    private function regleRoleAttribuable(): Exists
+    {
+        return Rule::exists('roles', 'id')->whereIn('nom', Role::ATTRIBUABLES_PAR_FORMULAIRE);
+    }
+
     private function donneesDuFormulaire(Utilisateur $compte): array
     {
         return [
             'compte' => $compte,
-            'roles' => Role::orderBy('id')->get(),
+            'roles' => Role::whereIn('nom', Role::ATTRIBUABLES_PAR_FORMULAIRE)->orderBy('id')->get(),
             'classes' => Classe::orderBy('nom')->get(),
             'idsClassesDuCompte' => $compte->exists ? $compte->classes()->pluck('classes.id')->all() : [],
         ];

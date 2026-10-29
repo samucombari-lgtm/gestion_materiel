@@ -7,7 +7,8 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Remplit la table "roles" avec les 4 rôles du cahier des charges (section 3).
+ * Remplit la table "roles" avec les 4 rôles du cahier des charges (section 3),
+ * plus le super-administrateur (multi-établissement).
  * La liste vient de Role::TOUS, la même que celle utilisée dans le code.
  *
  * updateOrInsert : crée le rôle s'il n'existe pas, sinon ne fait rien de plus.

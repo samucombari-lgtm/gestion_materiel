@@ -42,10 +42,14 @@ class UtilisateurTestSeeder extends Seeder
 
         $idsRoles = DB::table('roles')->pluck('id', 'nom');
 
+        // Provisoire (étape 1 du multi-établissement) : tout va dans l'établissement par défaut.
+        $idEtablissement = DB::table('etablissements')->orderBy('id')->value('id');
+
         foreach (self::COMPTES_DE_TEST as $compte) {
             DB::table('utilisateurs')->updateOrInsert(
                 ['email' => $compte['email']],
                 [
+                    'etablissement_id'          => $idEtablissement,
                     'prenom'                    => $compte['prenom'],
                     'nom'                       => $compte['nom'],
                     'mot_de_passe_hash'         => Hash::make($compte['mot_de_passe']),
@@ -60,17 +64,18 @@ class UtilisateurTestSeeder extends Seeder
             );
 
             if ($compte['classe'] !== null) {
-                $this->ajouterALaClasse($compte['email'], $compte['classe']);
+                $this->ajouterALaClasse($compte['email'], $compte['classe'], $idEtablissement);
             }
         }
     }
 
-    private function ajouterALaClasse(string $email, string $nomClasse): void
+    private function ajouterALaClasse(string $email, string $nomClasse, int $idEtablissement): void
     {
-        DB::table('classes')->updateOrInsert(['nom' => $nomClasse]);
+        $classe = ['etablissement_id' => $idEtablissement, 'nom' => $nomClasse];
+        DB::table('classes')->updateOrInsert($classe);
 
         DB::table('classe_utilisateur')->insertOrIgnore([
-            'classe_id'      => DB::table('classes')->where('nom', $nomClasse)->value('id'),
+            'classe_id'      => DB::table('classes')->where($classe)->value('id'),
             'utilisateur_id' => DB::table('utilisateurs')->where('email', $email)->value('id'),
         ]);
     }

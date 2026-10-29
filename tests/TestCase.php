@@ -3,6 +3,8 @@
 namespace Tests;
 
 use App\Models\Classe;
+use App\Models\Etablissement;
+use App\Models\Materiel;
 use App\Models\Pret;
 use App\Models\Role;
 use App\Models\Utilisateur;
@@ -17,6 +19,10 @@ use Illuminate\Support\Facades\Hash;
  *
  * Les fonctions ci-dessous évitent de répéter les mêmes lignes dans chaque test.
  * Les comptes de test sont ceux de database/seeders/UtilisateurTestSeeder.php.
+ *
+ * Ces fonctions tournent SANS utilisateur connecté : EtablissementScope ne filtre
+ * rien et l'événement creating ne remplit pas etablissement_id. Elles donnent
+ * donc l'établissement elles-mêmes.
  */
 abstract class TestCase extends BaseTestCase
 {
@@ -32,24 +38,35 @@ abstract class TestCase extends BaseTestCase
         return Pret::where('demandeur_id', $demandeur->id)->orderBy('id')->firstOrFail();
     }
 
-    /** Crée un prêt pour ce demandeur, sur le premier matériel disponible, avec le statut voulu. */
+    /**
+     * Crée un prêt pour ce demandeur, sur le premier matériel disponible de son
+     * établissement, avec le statut voulu.
+     */
     protected function creerPret(Utilisateur $demandeur, string $statut = Pret::EN_ATTENTE): Pret
     {
-        $pret = Pret::create([
-            'materiel_id' => \App\Models\Materiel::where('etat', 'disponible')->value('id'),
+        $pret = new Pret([
+            'materiel_id' => Materiel::where('etablissement_id', $demandeur->etablissement_id)
+                ->where('etat', Materiel::DISPONIBLE)
+                ->value('id'),
             'demandeur_id' => $demandeur->id,
             'date_debut' => now()->addDays(20)->toDateString(),
             'date_fin_prevue' => now()->addDays(25)->toDateString(),
         ]);
+        $pret->etablissement_id = $demandeur->etablissement_id;
         $pret->statut = $statut;
         $pret->save();
 
         return $pret;
     }
 
-    /** Crée un compte actif avec ce rôle et ces classes (créées si besoin). */
-    protected function creerUtilisateur(string $email, string $nomRole, array $nomsClasses = []): Utilisateur
+    /**
+     * Crée un compte actif avec ce rôle et ces classes (créées si besoin).
+     * Sans $idEtablissement : l'établissement par défaut (le premier en base).
+     */
+    protected function creerUtilisateur(string $email, string $nomRole, array $nomsClasses = [], ?int $idEtablissement = null): Utilisateur
     {
+        $idEtablissement ??= Etablissement::orderBy('id')->value('id');
+
         $utilisateur = new Utilisateur([
             'nom' => 'Test',
             'prenom' => $email,
@@ -59,13 +76,27 @@ abstract class TestCase extends BaseTestCase
             'doit_changer_mot_de_passe' => false,
         ]);
         $utilisateur->mot_de_passe_hash = Hash::make('Mot-De-Passe-Test-2026');
+        $utilisateur->etablissement_id = $idEtablissement;
         $utilisateur->save();
 
         foreach ($nomsClasses as $nomClasse) {
-            $classe = Classe::firstOrCreate(['nom' => $nomClasse]);
-            $utilisateur->classes()->attach($classe->id);
+            $utilisateur->classes()->attach($this->classe($nomClasse, $idEtablissement)->id);
         }
 
         return $utilisateur;
+    }
+
+    /** Retrouve la classe de ce nom dans cet établissement, ou la crée. */
+    private function classe(string $nomClasse, int $idEtablissement): Classe
+    {
+        $classe = Classe::where('etablissement_id', $idEtablissement)->where('nom', $nomClasse)->first();
+
+        if ($classe === null) {
+            $classe = new Classe(['nom' => $nomClasse]);
+            $classe->etablissement_id = $idEtablissement;
+            $classe->save();
+        }
+
+        return $classe;
     }
 }

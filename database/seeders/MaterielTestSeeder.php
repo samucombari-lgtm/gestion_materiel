@@ -33,9 +33,12 @@ class MaterielTestSeeder extends Seeder
             return;
         }
 
+        // Provisoire (étape 1 du multi-établissement) : tout va dans l'établissement par défaut.
+        $idEtablissement = DB::table('etablissements')->orderBy('id')->value('id');
+
         foreach (self::MATERIELS_DE_TEST as $materiel) {
             DB::table('materiels')->updateOrInsert(
-                ['numero_inventaire' => $materiel['numero_inventaire']],
+                ['etablissement_id' => $idEtablissement, 'numero_inventaire' => $materiel['numero_inventaire']],
                 [
                     'nom'        => $materiel['nom'],
                     'categorie'  => $materiel['categorie'],

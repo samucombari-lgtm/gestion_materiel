@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Etablissement;
 use App\Models\Journal;
 use App\Models\Role;
 use App\Models\Utilisateur;
@@ -16,14 +17,19 @@ use Illuminate\Validation\Rule;
  * Crée un compte administrateur depuis le terminal du serveur.
  *
  * Sert surtout à la mise en production : la base est vide, il faut un premier
- * administrateur pour créer tous les autres comptes depuis l'application.
- * Les seeders de test refusent de tourner en production, cette commande est
- * faite pour ça.
+ * administrateur par établissement pour créer tous les autres comptes depuis
+ * l'application. Les seeders de test refusent de tourner en production, cette
+ * commande est faite pour ça.
  *
  * Utilisation (sur le serveur, dans le dossier du projet) :
- *     php artisan materiel:creer-admin
+ *     php artisan materiel:creer-admin           administrateur d'UN établissement (choisi dans une liste)
+ *     php artisan materiel:creer-admin --super   super-administrateur : tous les établissements
  *
- * La commande demande le prénom, le nom et l'e-mail, puis :
+ * Le super-administrateur n'a pas d'établissement (etablissement_id vide). C'est
+ * le SEUL moyen de le créer : les écrans de gestion des comptes ne proposent
+ * pas ce rôle (Role::ATTRIBUABLES_PAR_FORMULAIRE).
+ *
+ * La commande demande le prénom, le nom et l'e-mail (et l'établissement), puis :
  *  - génère un mot de passe temporaire (16 lettres et chiffres), haché en base (ES-01) ;
  *  - l'affiche UNE seule fois dans le terminal ;
  *  - oblige à le changer à la première connexion (doit_changer_mot_de_passe = true) ;
@@ -37,14 +43,18 @@ class CreerAdministrateur extends Command
     private const LONGUEUR_MOT_DE_PASSE_TEMPORAIRE = 16;
 
     /** Nom de la commande, tapé après « php artisan ». */
-    protected $signature = 'materiel:creer-admin';
+    protected $signature = 'materiel:creer-admin
+                            {--super : Crée un super-administrateur, qui voit tous les établissements}';
 
     /** Description affichée par « php artisan list ». */
     protected $description = 'Crée un compte administrateur avec un mot de passe temporaire';
 
     public function handle(): int
     {
-        $this->info('Création d\'un compte administrateur');
+        $creerUnSuperAdmin = (bool) $this->option('super');
+        $nomRole = $creerUnSuperAdmin ? Role::SUPER_ADMIN : Role::ADMINISTRATEUR;
+
+        $this->info('Création d\'un compte ' . Role::LIBELLES[$nomRole]);
 
         $champs = [
             'prenom' => trim((string) $this->ask('Prénom')),
@@ -72,36 +82,49 @@ class CreerAdministrateur extends Command
             return self::FAILURE;
         }
 
-        $idRoleAdministrateur = Role::where('nom', Role::ADMINISTRATEUR)->value('id');
-        if ($idRoleAdministrateur === null) {
-            $this->error('Le rôle « administrateur » n\'existe pas. Lancez d\'abord : php artisan db:seed --class=RoleSeeder');
+        $idRole = Role::where('nom', $nomRole)->value('id');
+        if ($idRole === null) {
+            $this->error('Le rôle « ' . $nomRole . ' » n\'existe pas. Lancez d\'abord : php artisan db:seed --class=RoleSeeder');
             return self::FAILURE;
         }
 
-        if (! $this->confirm('Créer le compte administrateur ' . $champs['email'] . ' ?', true)) {
+        $idEtablissement = null;
+        if (! $creerUnSuperAdmin) {
+            $idEtablissement = $this->demanderEtablissement();
+            if ($idEtablissement === null) {
+                return self::FAILURE;
+            }
+        }
+
+        $question = $creerUnSuperAdmin
+            ? 'Créer le compte SUPER-ADMINISTRATEUR ' . $champs['email'] . ' (accès à tous les établissements) ?'
+            : 'Créer le compte administrateur ' . $champs['email'] . ' ?';
+        if (! $this->confirm($question, true)) {
             $this->warn('Création annulée.');
             return self::FAILURE;
         }
 
         $motDePasseTemporaire = Str::password(self::LONGUEUR_MOT_DE_PASSE_TEMPORAIRE, symbols: false);
 
-        DB::transaction(function () use ($champs, $idRoleAdministrateur, $motDePasseTemporaire) {
+        DB::transaction(function () use ($champs, $idRole, $nomRole, $idEtablissement, $motDePasseTemporaire) {
             $administrateur = new Utilisateur([
                 'prenom' => $champs['prenom'],
                 'nom' => $champs['nom'],
                 'email' => $champs['email'],
-                'role_id' => $idRoleAdministrateur,
+                'role_id' => $idRole,
                 'actif' => true,
                 'doit_changer_mot_de_passe' => true,
             ]);
             $administrateur->mot_de_passe_hash = Hash::make($motDePasseTemporaire);
+            // Hors $fillable : donné ici explicitement (vide pour un super-admin).
+            $administrateur->etablissement_id = $idEtablissement;
             $administrateur->save();
 
             // Pas d'utilisateur connecté en ligne de commande : l'auteur reste vide,
             // l'objet indique d'où vient la création.
             Journal::enregistrer(
                 Journal::COMPTE_CREE,
-                $administrateur->email . ' (Administrateur) – créé en ligne de commande'
+                $administrateur->email . ' (' . Role::LIBELLES[$nomRole] . ') – créé en ligne de commande'
             );
         });
 
@@ -112,5 +135,23 @@ class CreerAdministrateur extends Command
         $this->line('Il devra être changé à la première connexion.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Affiche la liste des établissements et renvoie l'id de celui choisi,
+     * ou null (avec un message) s'il n'en existe aucun.
+     */
+    private function demanderEtablissement(): ?int
+    {
+        $nomsEtablissements = Etablissement::orderBy('nom')->pluck('nom')->all();
+
+        if ($nomsEtablissements === []) {
+            $this->error('Aucun établissement en base. Lancez d\'abord : php artisan migrate');
+            return null;
+        }
+
+        $nomChoisi = $this->choice('Établissement', $nomsEtablissements);
+
+        return Etablissement::where('nom', $nomChoisi)->value('id');
     }
 }

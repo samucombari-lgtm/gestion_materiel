@@ -19,14 +19,24 @@ class Role extends Model
     public const ENSEIGNANT = 'enseignant';
     public const GESTIONNAIRE = 'gestionnaire';
     public const ADMINISTRATEUR = 'administrateur';
+    public const SUPER_ADMIN = 'super_admin';
 
-    public const TOUS = [self::ELEVE, self::ENSEIGNANT, self::GESTIONNAIRE, self::ADMINISTRATEUR];
+    public const TOUS = [self::ELEVE, self::ENSEIGNANT, self::GESTIONNAIRE, self::ADMINISTRATEUR, self::SUPER_ADMIN];
+
+    /**
+     * Rôles qu'un administrateur peut donner depuis les écrans de gestion des comptes.
+     * SUPER_ADMIN n'y est volontairement pas : il voit tous les établissements,
+     * il n'est créé que par « php artisan materiel:creer-admin --super ».
+     * C'est une liste blanche : un rôle ajouté plus tard n'est pas attribuable par défaut.
+     */
+    public const ATTRIBUABLES_PAR_FORMULAIRE = [self::ELEVE, self::ENSEIGNANT, self::GESTIONNAIRE, self::ADMINISTRATEUR];
 
     public const LIBELLES = [
         self::ELEVE          => 'Élève',
         self::ENSEIGNANT     => 'Enseignant',
         self::GESTIONNAIRE   => 'Gestionnaire',
         self::ADMINISTRATEUR => 'Administrateur',
+        self::SUPER_ADMIN    => 'Super-administrateur',
     ];
 
     protected $table = 'roles';

@@ -36,8 +36,12 @@ class PretTestSeeder extends Seeder
             return;
         }
 
+        // Provisoire (étape 1 du multi-établissement) : tout va dans l'établissement par défaut.
+        $idEtablissement = DB::table('etablissements')->orderBy('id')->value('id');
+
         foreach (self::DEMANDES_DE_TEST as $demande) {
             DB::table('prets')->insert([
+                'etablissement_id' => $idEtablissement,
                 'materiel_id'     => DB::table('materiels')->where('numero_inventaire', $demande['numero_inventaire'])->value('id'),
                 'demandeur_id'    => DB::table('utilisateurs')->where('email', $demande['email'])->value('id'),
                 'date_debut'      => now()->addDays(7)->toDateString(),

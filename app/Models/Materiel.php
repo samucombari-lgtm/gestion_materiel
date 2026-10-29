@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\AppartientAUnEtablissement;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -14,9 +15,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *    l'état reste cohérent avec la table prets ;
  *  - archive : le bouton « Archiver », si aucun prêt n'est en cours.
  * On ne supprime jamais un matériel (BF-11) : on l'archive.
+ *
+ * Un matériel appartient à un établissement : le numéro d'inventaire est unique
+ * dans un établissement, pas entre établissements.
  */
 class Materiel extends Model
 {
+    use AppartientAUnEtablissement;
+
     public const DISPONIBLE = 'disponible';
     public const PRETE = 'prete';
     public const EN_PANNE = 'en_panne';

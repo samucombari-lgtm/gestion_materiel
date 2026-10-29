@@ -20,6 +20,15 @@ use Illuminate\Support\Facades\DB;
  */
 class PermissionSeeder extends Seeder
 {
+    /**
+     * Permissions de l'administrateur. Le super-administrateur a exactement les
+     * mêmes : la seule différence est qu'il n'est pas limité à un établissement
+     * (EtablissementScope ne le filtre pas).
+     */
+    private const PERMISSIONS_ADMINISTRATION = [
+        'materiel.voir', 'compte.gerer', 'role.attribuer', 'journal.voir', 'parametres.gerer',
+    ];
+
     private const PERMISSIONS_PAR_ROLE = [
         Role::ELEVE => [
             'materiel.voir', 'pret.demander', 'pret.voir', 'pret.annuler',
@@ -32,9 +41,8 @@ class PermissionSeeder extends Seeder
             'pret.valider', 'pret.annuler', 'pret.sortie_retour',
         ],
         // L'administrateur n'est pas gestionnaire (principe du moindre privilège, section 3).
-        Role::ADMINISTRATEUR => [
-            'materiel.voir', 'compte.gerer', 'role.attribuer', 'journal.voir', 'parametres.gerer',
-        ],
+        Role::ADMINISTRATEUR => self::PERMISSIONS_ADMINISTRATION,
+        Role::SUPER_ADMIN    => self::PERMISSIONS_ADMINISTRATION,
     ];
 
     public function run(): void
