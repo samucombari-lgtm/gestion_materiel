@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Etablissement;
 use App\Models\Journal;
 use App\Models\Role;
 use App\Models\Utilisateur;
@@ -30,11 +31,15 @@ class CreerAdministrateurTest extends TestCase
 
     public function test_la_commande_cree_un_administrateur_avec_un_mot_de_passe_temporaire(): void
     {
+        // Lue en base et pas écrite en dur : selon l'ordre des tests, le lycée B
+        // des seeders de test peut déjà exister dans la base en mémoire.
+        $etablissementsProposes = Etablissement::orderBy('nom')->pluck('nom')->all();
+
         $this->artisan('materiel:creer-admin')
             ->expectsQuestion('Prénom', 'Alice')
             ->expectsQuestion('Nom', 'Martin')
             ->expectsQuestion('Adresse e-mail (identifiant de connexion)', 'Alice.Martin@Lycee.fr')
-            ->expectsChoice('Établissement', 'Lycée Saint-Joseph', ['Lycée Saint-Joseph'])
+            ->expectsChoice('Établissement', 'Lycée Saint-Joseph', $etablissementsProposes)
             ->expectsConfirmation('Créer le compte administrateur alice.martin@lycee.fr ?', 'yes')
             ->expectsOutputToContain('Mot de passe temporaire')
             ->assertSuccessful();
