@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\EtablissementScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use LogicException;
@@ -16,6 +17,16 @@ use LogicException;
  *  - ce modèle lance une erreur si du code essaie de modifier ou supprimer une ligne ;
  *  - en base, des triggers MariaDB refusent UPDATE et DELETE
  *    (migration 2026_10_19_100010_proteger_table_journal).
+ *
+ * Multi-établissement : chaque ligne porte l'établissement de son AUTEUR, et un
+ * administrateur ne voit que celles de son établissement (EtablissementScope).
+ * Restent sans établissement, donc visibles seulement par le super-administrateur :
+ * les lignes écrites avant le passage en multi-établissement, les connexions
+ * avec un e-mail inconnu, et les actions du super-administrateur lui-même.
+ *
+ * Pourquoi pas le trait AppartientAUnEtablissement ? Son événement creating
+ * exige un établissement quand un super-admin est connecté : sa propre ligne
+ * « Connexion réussie » serait refusée et il ne pourrait plus se connecter.
  */
 class Journal extends Model
 {
@@ -68,6 +79,7 @@ class Journal extends Model
     {
         return [
             'date_heure' => 'datetime',
+            'etablissement_id' => 'integer',
             'utilisateur_id' => 'integer',
         ];
     }
@@ -79,6 +91,8 @@ class Journal extends Model
      */
     protected static function booted(): void
     {
+        static::addGlobalScope(new EtablissementScope());
+
         static::updating(function () {
             throw new LogicException('Le journal de sécurité est en lecture seule.');
         });
@@ -100,7 +114,7 @@ class Journal extends Model
     {
         $auteur = $utilisateur ?? auth()->user();
 
-        self::create([
+        $ligne = new self([
             // Date fournie par Laravel (fuseau Europe/Paris de config/app.php), pas par MariaDB.
             'date_heure' => now(),
             'utilisateur_id' => $auteur?->id,
@@ -108,6 +122,11 @@ class Journal extends Model
             'objet' => $objet === null ? null : mb_substr($objet, 0, self::LONGUEUR_MAX_OBJET),
             'ip' => request()->ip(),
         ]);
+        // Hors $fillable, comme dans les autres modèles. Pris sur l'auteur et pas
+        // sur l'utilisateur connecté : une connexion échouée sur un compte du
+        // lycée B (personne de connecté) va bien dans le journal du lycée B.
+        $ligne->etablissement_id = $auteur?->etablissement_id;
+        $ligne->save();
     }
 
     public function utilisateur(): BelongsTo

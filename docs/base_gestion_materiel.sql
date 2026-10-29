@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Base de données « gestion_materiel » : structure + jeu de données de test
--- Projet : Gestion du matériel du lycée Saint-Joseph (BTS SIO SLAM, épreuve E5)
+-- Projet : Gestion du matériel des lycées, multi-établissement (BTS SIO SLAM, épreuve E5)
 -- =============================================================================
 --
 -- ⚠️ MÉTHODE RECOMMANDÉE : les migrations Laravel (php artisan migrate --seed).
@@ -10,13 +10,17 @@
 --    migrations évoluent. Pour le régénérer, voir le README.
 --
 -- Contenu :
---   - les 17 tables (9 tables du projet + 8 tables techniques de Laravel) ;
+--   - les 18 tables (10 tables du projet + 8 tables techniques de Laravel) ;
 --   - les 2 triggers qui rendent le journal de sécurité en lecture seule ;
 --   - la table « migrations » remplie : Laravel considère ensuite que toutes les
 --     migrations ont déjà été exécutées ;
---   - les données de test : 4 rôles, 11 permissions et la matrice rôles /
---     permissions, 5 comptes de test, 2 classes, 6 matériels, 3 demandes de prêt
---     (du 26/10/2026 au 02/11/2026, dates fixées le jour de la génération).
+--   - les données de test : 2 établissements (Lycée Saint-Joseph et le lycée
+--     fictif Jean-Moulin), 5 rôles (dont super_admin), 11 permissions et la
+--     matrice rôles / permissions, 10 comptes de test (5 du lycée A, 4 du
+--     lycée B, 1 super-administrateur), 3 classes, 9 matériels (INV-PC-001 et
+--     INV-VP-001 existent dans les deux lycées), 5 demandes de prêt
+--     (du 05/11/2026 au 12/11/2026, dates fixées le jour de la génération) ;
+--   - le journal de sécurité est créé VIDE ;
 --   - les tables sessions, cache, jobs… sont créées VIDES (aucune donnée privée).
 --
 -- ⚠️ DÉVELOPPEMENT ET DÉMONSTRATION UNIQUEMENT : les mots de passe des comptes
@@ -113,7 +117,9 @@ LOCK TABLES `classe_utilisateur` WRITE;
 INSERT INTO `classe_utilisateur` VALUES
 (1,1),
 (2,2),
-(1,3);
+(1,3),
+(3,6),
+(3,7);
 /*!40000 ALTER TABLE `classe_utilisateur` ENABLE KEYS */;
 UNLOCK TABLES;
 COMMIT;
@@ -128,10 +134,12 @@ DROP TABLE IF EXISTS `classes`;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `classes` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `etablissement_id` bigint(20) unsigned NOT NULL,
   `nom` varchar(50) NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `classes_nom_unique` (`nom`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  UNIQUE KEY `classes_etablissement_id_nom_unique` (`etablissement_id`,`nom`),
+  CONSTRAINT `classes_etablissement_id_foreign` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -142,9 +150,40 @@ SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `classes` WRITE;
 /*!40000 ALTER TABLE `classes` DISABLE KEYS */;
 INSERT INTO `classes` VALUES
-(1,'1re STMG 2'),
-(2,'2nde 3');
+(1,1,'1re STMG 2'),
+(2,1,'2nde 3'),
+(3,2,'1re STMG 2');
 /*!40000 ALTER TABLE `classes` ENABLE KEYS */;
+UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
+
+--
+-- Table structure for table `etablissements`
+--
+
+DROP TABLE IF EXISTS `etablissements`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `etablissements` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `nom` varchar(150) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `etablissements_nom_unique` (`nom`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `etablissements`
+--
+
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
+LOCK TABLES `etablissements` WRITE;
+/*!40000 ALTER TABLE `etablissements` DISABLE KEYS */;
+INSERT INTO `etablissements` VALUES
+(2,'Lycée Jean-Moulin (test)'),
+(1,'Lycée Saint-Joseph');
+/*!40000 ALTER TABLE `etablissements` ENABLE KEYS */;
 UNLOCK TABLES;
 COMMIT;
 SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
@@ -220,6 +259,7 @@ DROP TABLE IF EXISTS `journal`;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `journal` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `etablissement_id` bigint(20) unsigned DEFAULT NULL,
   `date_heure` datetime NOT NULL,
   `utilisateur_id` bigint(20) unsigned DEFAULT NULL,
   `action` varchar(50) NOT NULL,
@@ -229,6 +269,8 @@ CREATE TABLE `journal` (
   KEY `journal_utilisateur_id_foreign` (`utilisateur_id`),
   KEY `journal_date_heure_index` (`date_heure`),
   KEY `journal_action_index` (`action`),
+  KEY `journal_etablissement_id_foreign` (`etablissement_id`),
+  CONSTRAINT `journal_etablissement_id_foreign` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`),
   CONSTRAINT `journal_utilisateur_id_foreign` FOREIGN KEY (`utilisateur_id`) REFERENCES `utilisateurs` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -290,6 +332,7 @@ DROP TABLE IF EXISTS `materiels`;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `materiels` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `etablissement_id` bigint(20) unsigned NOT NULL,
   `nom` varchar(150) NOT NULL,
   `categorie` varchar(100) NOT NULL,
   `numero_inventaire` varchar(50) NOT NULL,
@@ -297,8 +340,9 @@ CREATE TABLE `materiels` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `materiels_numero_inventaire_unique` (`numero_inventaire`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  UNIQUE KEY `materiels_etablissement_id_numero_inventaire_unique` (`etablissement_id`,`numero_inventaire`),
+  CONSTRAINT `materiels_etablissement_id_foreign` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -309,12 +353,15 @@ SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `materiels` WRITE;
 /*!40000 ALTER TABLE `materiels` DISABLE KEYS */;
 INSERT INTO `materiels` VALUES
-(1,'Ordinateur portable Dell Latitude','Ordinateur portable','INV-PC-001','disponible','2026-10-19 13:02:26','2026-10-19 13:02:26'),
-(2,'Ordinateur portable HP ProBook','Ordinateur portable','INV-PC-002','disponible','2026-10-19 13:02:26','2026-10-19 13:02:26'),
-(3,'Vidéoprojecteur Epson EB-W51','Vidéoprojecteur','INV-VP-001','disponible','2026-10-19 13:02:26','2026-10-19 13:02:26'),
-(4,'Vidéoprojecteur BenQ MW560','Vidéoprojecteur','INV-VP-002','en_panne','2026-10-19 13:02:26','2026-10-19 13:02:26'),
-(5,'Caméra Canon Legria HF G70','Caméra','INV-CAM-001','en_reparation','2026-10-19 13:02:26','2026-10-19 13:02:26'),
-(6,'Câble HDMI 5 m','Câble','INV-CAB-001','disponible','2026-10-19 13:02:26','2026-10-19 13:02:26');
+(1,1,'Ordinateur portable Dell Latitude','Ordinateur portable','INV-PC-001','disponible','2026-10-29 19:33:00','2026-10-29 19:33:00'),
+(2,1,'Ordinateur portable HP ProBook','Ordinateur portable','INV-PC-002','disponible','2026-10-29 19:33:00','2026-10-29 19:33:00'),
+(3,1,'Vidéoprojecteur Epson EB-W51','Vidéoprojecteur','INV-VP-001','disponible','2026-10-29 19:33:00','2026-10-29 19:33:00'),
+(4,1,'Vidéoprojecteur BenQ MW560','Vidéoprojecteur','INV-VP-002','en_panne','2026-10-29 19:33:00','2026-10-29 19:33:00'),
+(5,1,'Caméra Canon Legria HF G70','Caméra','INV-CAM-001','en_reparation','2026-10-29 19:33:00','2026-10-29 19:33:00'),
+(6,1,'Câble HDMI 5 m','Câble','INV-CAB-001','disponible','2026-10-29 19:33:00','2026-10-29 19:33:00'),
+(7,2,'Ordinateur portable Lenovo ThinkPad','Ordinateur portable','INV-PC-001','disponible','2026-10-29 19:33:00','2026-10-29 19:33:00'),
+(8,2,'Vidéoprojecteur Optoma W400','Vidéoprojecteur','INV-VP-001','disponible','2026-10-29 19:33:00','2026-10-29 19:33:00'),
+(9,2,'Tablette Samsung Galaxy Tab A9','Tablette','INV-TAB-001','disponible','2026-10-29 19:33:00','2026-10-29 19:33:00');
 /*!40000 ALTER TABLE `materiels` ENABLE KEYS */;
 UNLOCK TABLES;
 COMMIT;
@@ -332,7 +379,7 @@ CREATE TABLE `migrations` (
   `migration` varchar(255) NOT NULL,
   `batch` int(11) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -355,7 +402,9 @@ INSERT INTO `migrations` VALUES
 (10,'2026_10_19_100007_create_materiels_table',1),
 (11,'2026_10_19_100008_create_prets_table',1),
 (12,'2026_10_19_100009_create_journal_table',1),
-(13,'2026_10_19_100010_proteger_table_journal',1);
+(13,'2026_10_19_100010_proteger_table_journal',1),
+(14,'2026_10_29_100001_create_etablissements_table',1),
+(15,'2026_10_29_100002_ajouter_etablissement_aux_tables',1);
 /*!40000 ALTER TABLE `migrations` ENABLE KEYS */;
 UNLOCK TABLES;
 COMMIT;
@@ -425,6 +474,7 @@ DROP TABLE IF EXISTS `prets`;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `prets` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `etablissement_id` bigint(20) unsigned NOT NULL,
   `materiel_id` bigint(20) unsigned NOT NULL,
   `demandeur_id` bigint(20) unsigned NOT NULL,
   `validateur_id` bigint(20) unsigned DEFAULT NULL,
@@ -440,10 +490,12 @@ CREATE TABLE `prets` (
   KEY `prets_materiel_id_foreign` (`materiel_id`),
   KEY `prets_demandeur_id_foreign` (`demandeur_id`),
   KEY `prets_validateur_id_foreign` (`validateur_id`),
+  KEY `prets_etablissement_id_foreign` (`etablissement_id`),
   CONSTRAINT `prets_demandeur_id_foreign` FOREIGN KEY (`demandeur_id`) REFERENCES `utilisateurs` (`id`),
+  CONSTRAINT `prets_etablissement_id_foreign` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`),
   CONSTRAINT `prets_materiel_id_foreign` FOREIGN KEY (`materiel_id`) REFERENCES `materiels` (`id`),
   CONSTRAINT `prets_validateur_id_foreign` FOREIGN KEY (`validateur_id`) REFERENCES `utilisateurs` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -454,9 +506,11 @@ SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `prets` WRITE;
 /*!40000 ALTER TABLE `prets` DISABLE KEYS */;
 INSERT INTO `prets` VALUES
-(1,1,1,NULL,'2026-10-26','2026-11-02',NULL,'en_attente',NULL,NULL,'2026-10-19 13:02:26','2026-10-19 13:02:26'),
-(2,3,2,NULL,'2026-10-26','2026-11-02',NULL,'en_attente',NULL,NULL,'2026-10-19 13:02:26','2026-10-19 13:02:26'),
-(3,2,3,NULL,'2026-10-26','2026-11-02',NULL,'en_attente',NULL,NULL,'2026-10-19 13:02:26','2026-10-19 13:02:26');
+(1,1,1,1,NULL,'2026-11-05','2026-11-12',NULL,'en_attente',NULL,NULL,'2026-10-29 19:33:00','2026-10-29 19:33:00'),
+(2,1,3,2,NULL,'2026-11-05','2026-11-12',NULL,'en_attente',NULL,NULL,'2026-10-29 19:33:00','2026-10-29 19:33:00'),
+(3,1,2,3,NULL,'2026-11-05','2026-11-12',NULL,'en_attente',NULL,NULL,'2026-10-29 19:33:00','2026-10-29 19:33:00'),
+(4,2,7,6,NULL,'2026-11-05','2026-11-12',NULL,'en_attente',NULL,NULL,'2026-10-29 19:33:00','2026-10-29 19:33:00'),
+(5,2,8,7,NULL,'2026-11-05','2026-11-12',NULL,'en_attente',NULL,NULL,'2026-10-29 19:33:00','2026-10-29 19:33:00');
 /*!40000 ALTER TABLE `prets` ENABLE KEYS */;
 UNLOCK TABLES;
 COMMIT;
@@ -491,6 +545,7 @@ INSERT INTO `role_permission` VALUES
 (2,1),
 (3,1),
 (4,1),
+(5,1),
 (3,2),
 (1,3),
 (2,3),
@@ -505,9 +560,13 @@ INSERT INTO `role_permission` VALUES
 (3,6),
 (3,7),
 (4,8),
+(5,8),
 (4,9),
+(5,9),
 (4,10),
-(4,11);
+(5,10),
+(4,11),
+(5,11);
 /*!40000 ALTER TABLE `role_permission` ENABLE KEYS */;
 UNLOCK TABLES;
 COMMIT;
@@ -525,7 +584,7 @@ CREATE TABLE `roles` (
   `nom` varchar(50) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `roles_nom_unique` (`nom`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -539,7 +598,8 @@ INSERT INTO `roles` VALUES
 (4,'administrateur'),
 (1,'eleve'),
 (2,'enseignant'),
-(3,'gestionnaire');
+(3,'gestionnaire'),
+(5,'super_admin');
 /*!40000 ALTER TABLE `roles` ENABLE KEYS */;
 UNLOCK TABLES;
 COMMIT;
@@ -574,6 +634,7 @@ DROP TABLE IF EXISTS `utilisateurs`;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `utilisateurs` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `etablissement_id` bigint(20) unsigned DEFAULT NULL,
   `nom` varchar(100) NOT NULL,
   `prenom` varchar(100) NOT NULL,
   `email` varchar(255) NOT NULL,
@@ -588,8 +649,10 @@ CREATE TABLE `utilisateurs` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `utilisateurs_email_unique` (`email`),
   KEY `utilisateurs_role_id_foreign` (`role_id`),
+  KEY `utilisateurs_etablissement_id_foreign` (`etablissement_id`),
+  CONSTRAINT `utilisateurs_etablissement_id_foreign` FOREIGN KEY (`etablissement_id`) REFERENCES `etablissements` (`id`),
   CONSTRAINT `utilisateurs_role_id_foreign` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -600,11 +663,16 @@ SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `utilisateurs` WRITE;
 /*!40000 ALTER TABLE `utilisateurs` DISABLE KEYS */;
 INSERT INTO `utilisateurs` VALUES
-(1,'Eleve','Emma','eleve@lycee.test','$2y$12$9Scsr6pnlQiKYsqX3B/G3OTlzQbels4dy0s/5vlWbi1W7LlwkoCn6',1,1,0,NULL,0,'2026-10-19 13:02:25','2026-10-19 13:02:25'),
-(2,'Eleve','Bruno','eleve2@lycee.test','$2y$12$EMzO4q5kt6/TPHgEdKK4Uu05ZqUawfx0.TW3wqBemPV74QbJXb92y',1,1,0,NULL,0,'2026-10-19 13:02:25','2026-10-19 13:02:25'),
-(3,'Enseignant','Eric','enseignant@lycee.test','$2y$12$hfh3yky3YG/wPB0fQ5o8b.g5XuECyj4j.LYJw/vBJBX7wd.j4roYK',2,1,0,NULL,0,'2026-10-19 13:02:25','2026-10-19 13:02:25'),
-(4,'Gestionnaire','Gaelle','gestionnaire@lycee.test','$2y$12$mpJbgYHXjtbtBbgwwXxOqOd/d7C6LkWIWF8tA1qIgHoFLcu4UsGLi',3,1,0,NULL,0,'2026-10-19 13:02:26','2026-10-19 13:02:26'),
-(5,'Admin','Adam','admin@lycee.test','$2y$12$by4WcwYJBycoVgyT43KnQub0GCxrAmNKElvxWtwusRdpWZRvSmyum',4,1,0,NULL,0,'2026-10-19 13:02:26','2026-10-19 13:02:26');
+(1,1,'Eleve','Emma','eleve@lycee.test','$2y$12$bx1NhMfFQ23pr5qjHIGRquDYZ54t7D3KrSDQDBIu6smnTUo1tJAjy',1,1,0,NULL,0,'2026-10-29 19:32:58','2026-10-29 19:32:58'),
+(2,1,'Eleve','Bruno','eleve2@lycee.test','$2y$12$2s6yXmXdo74VdFSeba6s4e78gM04hfxh1SUdOEV/sgHSt29mO7d/C',1,1,0,NULL,0,'2026-10-29 19:32:58','2026-10-29 19:32:58'),
+(3,1,'Enseignant','Eric','enseignant@lycee.test','$2y$12$PEQlW1fOohWy8l15luSyvuDujLV.5wk4CQEb8gMbW71Xrz/AUzdYi',2,1,0,NULL,0,'2026-10-29 19:32:58','2026-10-29 19:32:58'),
+(4,1,'Gestionnaire','Gaelle','gestionnaire@lycee.test','$2y$12$Zpq63pvxALZy1iEKeoQusuqXJfWw91Xd8NlpISjs0IVqEX10aAzIu',3,1,0,NULL,0,'2026-10-29 19:32:59','2026-10-29 19:32:59'),
+(5,1,'Admin','Adam','admin@lycee.test','$2y$12$FK6WzRK9FFmNDBDz9X8p1.GCRkN6qryPbcEhLyjypQap9BnqA/eDO',4,1,0,NULL,0,'2026-10-29 19:32:59','2026-10-29 19:32:59'),
+(6,2,'Eleve','Lea','eleve@lycee-b.test','$2y$12$hk3aHciA1KyeupBHvcTIeOJWRpSz4KWOADEG8fL96zPLcf2FCKaoW',1,1,0,NULL,0,'2026-10-29 19:32:59','2026-10-29 19:32:59'),
+(7,2,'Enseignant','Hugo','enseignant@lycee-b.test','$2y$12$s3WL.TiXmmH1eQxTXFi.Dev0VeI2mgUGtiS3ffzJm2fbfWqcXyOEu',2,1,0,NULL,0,'2026-10-29 19:32:59','2026-10-29 19:32:59'),
+(8,2,'Gestionnaire','Ines','gestionnaire@lycee-b.test','$2y$12$nb5R5GfUiQ4WOZqKr4KEzu/OInkK5rGxf6AxYmP1IYjuaaMo1HNHO',3,1,0,NULL,0,'2026-10-29 19:32:59','2026-10-29 19:32:59'),
+(9,2,'Admin','Basile','admin@lycee-b.test','$2y$12$0OUBa7cVZ/lIwU1cuxsffOuRztO59OCkDVqDHjDnUszQq33M9wtgq',4,1,0,NULL,0,'2026-10-29 19:33:00','2026-10-29 19:33:00'),
+(10,NULL,'Superadmin','Sacha','superadmin@academie.test','$2y$12$JOE/5GX4R1tf9eGFUTqC5.TIRUcYor78ykhWX1HYELkG9T/bAp9h6',5,1,0,NULL,0,'2026-10-29 19:33:00','2026-10-29 19:33:00');
 /*!40000 ALTER TABLE `utilisateurs` ENABLE KEYS */;
 UNLOCK TABLES;
 COMMIT;

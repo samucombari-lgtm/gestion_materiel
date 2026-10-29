@@ -9,11 +9,13 @@ use App\Models\Role;
 use App\Models\Utilisateur;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Exists;
 use Illuminate\View\View;
 
 /**
@@ -164,7 +166,7 @@ class CompteController extends Controller
         }
 
         $champs = $request->validate(
-            ['role_id' => ['required', 'integer', Rule::exists('roles', 'id')]],
+            ['role_id' => ['required', 'integer', $this->regleRoleAttribuable()]],
             ['role_id.required' => 'Choisissez un rôle.', 'role_id.exists' => 'Ce rôle n\'existe pas.']
         );
 
@@ -263,11 +265,16 @@ class CompteController extends Controller
             'prenom' => ['required', 'string', 'max:100'],
             'email' => ['required', 'string', 'email', 'max:255', $regleEmailUnique],
             'classes' => ['nullable', 'array'],
-            'classes.*' => ['integer', Rule::exists('classes', 'id')],
+            // Rule::exists ne passe pas par EtablissementScope : sans ce where, on
+            // pourrait mettre le compte dans une classe d'un autre lycée.
+            'classes.*' => [
+                'integer',
+                Rule::exists('classes', 'id')->where('etablissement_id', $this->idEtablissementDuCompte($compte)),
+            ],
         ];
 
         if ($avecRole) {
-            $regles['role_id'] = ['required', 'integer', Rule::exists('roles', 'id')];
+            $regles['role_id'] = ['required', 'integer', $this->regleRoleAttribuable()];
         }
 
         $champs = $request->validate($regles, [
@@ -301,12 +308,34 @@ class CompteController extends Controller
         $compte->classes()->sync($idsClasses);
     }
 
+    /**
+     * Le rôle envoyé doit exister ET être dans la liste blanche Role::ATTRIBUABLES_PAR_FORMULAIRE.
+     * Sans le whereIn, un administrateur pourrait envoyer à la main l'id du rôle
+     * super_admin (requête fabriquée) et donner l'accès à tous les établissements.
+     */
+    private function regleRoleAttribuable(): Exists
+    {
+        return Rule::exists('roles', 'id')->whereIn('nom', Role::ATTRIBUABLES_PAR_FORMULAIRE);
+    }
+
+    /**
+     * Établissement dont les classes peuvent être choisies pour ce compte :
+     * celui du compte modifié, ou celui de l'administrateur connecté pour une création
+     * (le compte créé ira dans son établissement, voir AppartientAUnEtablissement).
+     * Écrit explicitement pour qu'un super-administrateur, que le scope ne filtre
+     * pas, ne voie pas non plus les classes des autres lycées.
+     */
+    private function idEtablissementDuCompte(?Utilisateur $compte): ?int
+    {
+        return $compte?->etablissement_id ?? Auth::user()->etablissement_id;
+    }
+
     private function donneesDuFormulaire(Utilisateur $compte): array
     {
         return [
             'compte' => $compte,
-            'roles' => Role::orderBy('id')->get(),
-            'classes' => Classe::orderBy('nom')->get(),
+            'roles' => Role::whereIn('nom', Role::ATTRIBUABLES_PAR_FORMULAIRE)->orderBy('id')->get(),
+            'classes' => Classe::where('etablissement_id', $this->idEtablissementDuCompte($compte))->orderBy('nom')->get(),
             'idsClassesDuCompte' => $compte->exists ? $compte->classes()->pluck('classes.id')->all() : [],
         ];
     }

@@ -110,6 +110,10 @@ class MaterielController extends Controller
     /**
      * Validation des champs du formulaire (ES-10), commune à l'ajout et à la modification.
      *
+     * Le numéro d'inventaire est unique DANS L'ÉTABLISSEMENT (clé composite en base) :
+     * celui du matériel modifié, ou celui du gestionnaire pour un ajout.
+     * Rule::unique ne passe pas par EtablissementScope, d'où le where écrit ici.
+     *
      * $materiel vaut null pour un ajout. Pour une modification :
      *  - le numéro d'inventaire doit rester unique, sauf par rapport à lui-même ;
      *  - si le matériel est prêté, on ne touche pas à son état : seul le retour
@@ -117,7 +121,10 @@ class MaterielController extends Controller
      */
     private function validerChamps(Request $request, ?Materiel $materiel): array
     {
-        $regleNumeroUnique = Rule::unique('materiels', 'numero_inventaire');
+        $idEtablissement = $materiel?->etablissement_id ?? $request->user()->etablissement_id;
+
+        $regleNumeroUnique = Rule::unique('materiels', 'numero_inventaire')
+            ->where('etablissement_id', $idEtablissement);
         if ($materiel !== null) {
             $regleNumeroUnique->ignore($materiel->id);
         }
@@ -140,7 +147,7 @@ class MaterielController extends Controller
             'categorie.max' => 'La catégorie ne doit pas dépasser 100 caractères.',
             'numero_inventaire.required' => 'Le numéro d\'inventaire est obligatoire.',
             'numero_inventaire.max' => 'Le numéro d\'inventaire ne doit pas dépasser 50 caractères.',
-            'numero_inventaire.unique' => 'Ce numéro d\'inventaire est déjà utilisé.',
+            'numero_inventaire.unique' => 'Ce numéro d\'inventaire est déjà utilisé dans votre établissement.',
             'etat.required' => 'L\'état est obligatoire.',
             'etat.in' => 'Cet état ne peut pas être choisi ici.',
         ]);

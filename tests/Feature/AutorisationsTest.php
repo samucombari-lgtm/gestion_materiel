@@ -110,6 +110,30 @@ class AutorisationsTest extends TestCase
     }
 
     /**
+     * Multi-établissement : le rôle super_admin voit tous les établissements. Un
+     * administrateur ne doit pas pouvoir le donner, même en envoyant son id à la
+     * main (il n'est pas dans le menu). Seule la commande artisan --super le crée.
+     */
+    public function test_un_administrateur_ne_peut_pas_donner_le_role_super_admin(): void
+    {
+        $adam = $this->utilisateur('admin@lycee.test');
+        $emma = $this->utilisateur('eleve@lycee.test');
+        $idRoleSuperAdmin = Role::where('nom', Role::SUPER_ADMIN)->value('id');
+
+        $this->actingAs($adam)
+            ->patch('/comptes/' . $emma->id . '/role', ['role_id' => $idRoleSuperAdmin])
+            ->assertSessionHasErrors(['role_id' => 'Ce rôle n\'existe pas.']);
+
+        $this->actingAs($adam)->post('/comptes', [
+            'nom' => 'Pirate', 'prenom' => 'Test', 'email' => 'pirate@lycee.test', 'role_id' => $idRoleSuperAdmin,
+        ])->assertSessionHasErrors('role_id');
+
+        $this->assertTrue($emma->fresh()->aLeRole(Role::ELEVE));
+        $this->assertDatabaseMissing('utilisateurs', ['email' => 'pirate@lycee.test']);
+        $this->actingAs($adam)->get('/comptes/' . $emma->id . '/modifier')->assertDontSee('Super-administrateur');
+    }
+
+    /**
      * 5.7 : « Rôle d'un élève changé pendant qu'il est connecté → Sa session est fermée » (RA-06).
      *
      * Pendant les tests, Laravel garde l'utilisateur connecté en mémoire : on ne

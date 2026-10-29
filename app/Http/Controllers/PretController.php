@@ -73,10 +73,15 @@ class PretController extends Controller
     {
         $champs = $request->validate(
             [
-                // Le matériel doit exister et être disponible ou prêté (réservation pour plus tard).
+                // Le matériel doit exister, être disponible ou prêté (réservation pour plus tard)
+                // et appartenir à l'établissement du demandeur. Rule::exists ne passe pas
+                // par EtablissementScope : sans ce where, on pourrait envoyer à la main
+                // l'id d'un matériel d'un autre lycée.
                 'materiel_id' => [
                     'required', 'integer',
-                    Rule::exists('materiels', 'id')->whereIn('etat', [Materiel::DISPONIBLE, Materiel::PRETE]),
+                    Rule::exists('materiels', 'id')
+                        ->whereIn('etat', [Materiel::DISPONIBLE, Materiel::PRETE])
+                        ->where('etablissement_id', $request->user()->etablissement_id),
                 ],
                 'date_debut' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
                 'date_fin_prevue' => ['required', 'date_format:Y-m-d', 'after_or_equal:date_debut'],
