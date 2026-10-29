@@ -4,7 +4,7 @@
 | --- | --- |
 | **Application** | Gestion du matériel du lycée Saint-Joseph |
 | **Auteur** | Samuel Combari — BTS SIO option SLAM, épreuve E5 |
-| **Version testée** | branche `main`, après le commit « Script SQL de la base avec jeu de données de test » |
+| **Version testée** | branche `multi-etablissement`, après le commit « Multi-établissement, étape 5 : test complet d'isolation » |
 | **Référence** | [Cahier des charges](cahier-des-charges.md) : besoins BF-xx (section 4), règles RA-xx (section 5.4), exigences ES-xx (section 6) |
 | **Documents liés** | [Architecture](architecture.md) · [Autorisations](autorisations.md) |
 
@@ -29,11 +29,12 @@ Pour chaque test manuel, noter le **résultat obtenu**, cocher **OK** ou **KO**,
 8. [Tableau de bord](#8-tableau-de-bord-bf-30)
 9. [Journal de sécurité](#9-journal-de-sécurité-bf-31-ra-08)
 10. [Gestion des comptes](#10-gestion-des-comptes-bf-04-ra-05-ra-06)
-11. [Sécurité (OWASP)](#11-sécurité-owasp)
-12. [Installation et exploitation](#12-installation-et-exploitation)
-13. [Fonctions non développées](#13-fonctions-non-développées)
-14. [Synthèse](#14-synthèse)
-15. [Fiche d'anomalie](#15-fiche-danomalie)
+11. [Isolation entre établissements](#11-isolation-entre-établissements-multi-établissement)
+12. [Sécurité (OWASP)](#12-sécurité-owasp)
+13. [Installation et exploitation](#13-installation-et-exploitation)
+14. [Fonctions non développées](#14-fonctions-non-développées)
+15. [Synthèse](#15-synthèse)
+16. [Fiche d'anomalie](#16-fiche-danomalie)
 
 ---
 
@@ -69,34 +70,57 @@ mariadb -u materiel_app -p gestion_materiel
 
 ### 1.3 Jeu de données de test
 
+Les seeders remplissent **deux lycées** (`database/seeders/EtablissementTestSeeder.php`) :
+
+| N° | Établissement | Remarque |
+| --- | --- | --- |
+| 1 | **Lycée Saint-Joseph** (lycée A) | Établissement par défaut, créé par la migration. Sauf mention contraire, les tests de ce cahier se font dans ce lycée |
+| 2 | **Lycée Jean-Moulin (test)** (lycée B) | Lycée fictif, pour les tests d'isolation (section 11) |
+
+Les numéros (id) ci-dessous sont ceux obtenus après `php artisan migrate:fresh --seed`.
+
 **Comptes** (mots de passe publics, développement uniquement) :
 
-| Nom dans ce cahier | Rôle | E-mail | Mot de passe | Classe |
-| --- | --- | --- | --- | --- |
-| **Emma** | Élève | eleve@lycee.test | Eleve-Test-2026 | 1re STMG 2 |
-| **Bruno** | Élève | eleve2@lycee.test | Eleve2-Test-2026 | 2nde 3 |
-| **Eric** | Enseignant | enseignant@lycee.test | Enseignant-Test-2026 | 1re STMG 2 (classe d'Emma) |
-| **Gaëlle** | Gestionnaire | gestionnaire@lycee.test | Gestionnaire-Test-2026 | — |
-| **Adam** | Administrateur | admin@lycee.test | Admin-Test-2026 | — |
+| Id | Nom dans ce cahier | Lycée | Rôle | E-mail | Mot de passe | Classe |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | **Emma** | A | Élève | eleve@lycee.test | Eleve-Test-2026 | 1re STMG 2 |
+| 2 | **Bruno** | A | Élève | eleve2@lycee.test | Eleve2-Test-2026 | 2nde 3 |
+| 3 | **Eric** | A | Enseignant | enseignant@lycee.test | Enseignant-Test-2026 | 1re STMG 2 (classe d'Emma) |
+| 4 | **Gaëlle** | A | Gestionnaire | gestionnaire@lycee.test | Gestionnaire-Test-2026 | — |
+| 5 | **Adam** | A | Administrateur | admin@lycee.test | Admin-Test-2026 | — |
+| 6 | **Léa** | B | Élève | eleve@lycee-b.test | Eleve-B-Test-2026 | 1re STMG 2 (celle du lycée B) |
+| 7 | **Hugo** | B | Enseignant | enseignant@lycee-b.test | Enseignant-B-Test-2026 | 1re STMG 2 (celle du lycée B) |
+| 8 | **Inès** | B | Gestionnaire | gestionnaire@lycee-b.test | Gestionnaire-B-Test-2026 | — |
+| 9 | **Basile** | B | Administrateur | admin@lycee-b.test | Admin-B-Test-2026 | — |
+| 10 | **Sacha** | aucun | Super-administrateur | superadmin@academie.test | Super-Admin-Test-2026 | — |
+
+**Classes** : n° 1 « 1re STMG 2 » (A), n° 2 « 2nde 3 » (A), n° 3 « 1re STMG 2 » (B). Le même nom existe dans les deux lycées.
 
 **Matériels** :
 
-| N° | N° d'inventaire | Nom | État |
-| --- | --- | --- | --- |
-| 1 | INV-PC-001 | Ordinateur portable Dell Latitude | Disponible |
-| 2 | INV-PC-002 | Ordinateur portable HP ProBook | Disponible |
-| 3 | INV-VP-001 | Vidéoprojecteur Epson EB-W51 | Disponible |
-| 4 | INV-VP-002 | Vidéoprojecteur BenQ MW560 | En panne |
-| 5 | INV-CAM-001 | Caméra Canon Legria HF G70 | En réparation |
-| 6 | INV-CAB-001 | Câble HDMI 5 m | Disponible |
+| N° | Lycée | N° d'inventaire | Nom | État |
+| --- | --- | --- | --- | --- |
+| 1 | A | INV-PC-001 | Ordinateur portable Dell Latitude | Disponible |
+| 2 | A | INV-PC-002 | Ordinateur portable HP ProBook | Disponible |
+| 3 | A | INV-VP-001 | Vidéoprojecteur Epson EB-W51 | Disponible |
+| 4 | A | INV-VP-002 | Vidéoprojecteur BenQ MW560 | En panne |
+| 5 | A | INV-CAM-001 | Caméra Canon Legria HF G70 | En réparation |
+| 6 | A | INV-CAB-001 | Câble HDMI 5 m | Disponible |
+| 7 | B | INV-PC-001 | Ordinateur portable Lenovo ThinkPad | Disponible |
+| 8 | B | INV-VP-001 | Vidéoprojecteur Optoma W400 | Disponible |
+| 9 | B | INV-TAB-001 | Tablette Samsung Galaxy Tab A9 | Disponible |
+
+INV-PC-001 et INV-VP-001 existent dans les deux lycées : le numéro d'inventaire est unique **par établissement**.
 
 **Demandes de prêt** (toutes « En attente », du J+7 au J+14, J = jour du `migrate:fresh --seed`) :
 
-| Prêt n° | Demandeur | Matériel |
-| --- | --- | --- |
-| 1 | Emma | INV-PC-001 |
-| 2 | Bruno | INV-VP-001 |
-| 3 | Eric | INV-PC-002 |
+| Prêt n° | Lycée | Demandeur | Matériel |
+| --- | --- | --- | --- |
+| 1 | A | Emma | INV-PC-001 (Dell, n° 1) |
+| 2 | A | Bruno | INV-VP-001 (Epson, n° 3) |
+| 3 | A | Eric | INV-PC-002 (n° 2) |
+| 4 | B | Léa | INV-PC-001 (Lenovo, n° 7) |
+| 5 | B | Hugo | INV-VP-001 (Optoma, n° 8) |
 
 ### 1.4 Astuces pour tester
 
@@ -150,12 +174,24 @@ Les tests tournent sur une base SQLite en mémoire : ils ne modifient pas la bas
 | A-17 | Les en-têtes de sécurité sont présents sur toutes les sortes de pages, sans `X-Powered-By` | Audit ZAP | `EnTetesSecuriteTest` |
 | A-18 | HSTS n'est envoyé qu'en HTTPS | ES-09 | `EnTetesSecuriteTest` |
 | A-19 | Aucune vue ne contient de JavaScript ou de CSS dans le HTML (sinon la CSP le bloquerait) | Audit ZAP | `EnTetesSecuriteTest` |
+| A-20 | Un administrateur ne peut pas donner le rôle super_admin (menu et requête fabriquée) | Isolation, RA-05 | `AutorisationsTest` |
+| A-21 | L'option `--super` crée un super-administrateur sans établissement | Isolation | `CreerAdministrateurTest` |
+| A-22 | Les listes du lycée A ne montrent rien du lycée B (catalogue, prêts, tableau de bord, comptes, classes) | Isolation | `IsolationEtablissementsTest` |
+| A-23 | 14 adresses directes vers le lycée B (lecture et actions) donnent la même réponse qu'un id inexistant, la base ne change pas | Isolation, RA-03 | `IsolationEtablissementsTest` |
+| A-24 | Pour chaque compte du lycée A, aucun modèle ne renvoie de donnée d'un autre lycée ou sans établissement | Isolation | `IsolationEtablissementsTest` |
+| A-25 | La connexion marche pour les deux lycées et le super-administrateur, y compris au rechargement depuis la session | Isolation, BF-01 | `IsolationEtablissementsTest` |
+| A-26 | Le super-administrateur voit les deux lycées | Isolation | `IsolationEtablissementsTest` |
+| A-27 | Un élève ne peut pas demander un matériel d'un autre lycée | Isolation, ES-10 | `IsolationEtablissementsTest` |
+| A-28 | Un administrateur ne peut pas mettre un compte dans une classe d'un autre lycée | Isolation, ES-10 | `IsolationEtablissementsTest` |
+| A-29 | Le numéro d'inventaire est unique par établissement | Isolation, BF-11 | `IsolationEtablissementsTest` |
+| A-30 | Le journal est isolé par établissement ; le super-administrateur voit tout | Isolation, BF-31 | `IsolationEtablissementsTest` |
 
 **Résultat** :
 
 | Date | Exécuté par | Résultat | Statut |
 | --- | --- | --- | --- |
 | 19/10/2026 | Claude Code (développement) | `Tests: 19 passed (173 assertions)` | ✅ OK |
+| 29/10/2026 | Claude Code (développement, multi-établissement) | `Tests: 30 passed (329 assertions)` | ✅ OK |
 | | Samuel Combari | | ☐ OK ☐ KO 📷 |
 
 **Vérification que les tests détectent les erreurs** (sabotage volontaire, puis restauration du code) :
@@ -165,6 +201,16 @@ Les tests tournent sur une base SQLite en mémoire : ils ne modifient pas la bas
 | RA-04 dans `PretPolicy::valider` | A-05 | ✅ A-05 a échoué |
 | Élèves des classes dans `Pret::visiblesPar` | A-13 | ✅ A-13 a échoué, avec les prêts concernés |
 | RA-05 dans `UtilisateurPolicy::changerRole` | A-06 | ✅ A-06 a échoué |
+
+| Protection retirée du code (multi-établissement) | Test qui doit échouer | Obtenu (29/10/2026) |
+| --- | --- | --- |
+| `EtablissementScope` désactivé (aucun filtre) | A-22, A-23, A-24, A-30 | ✅ ces 4 tests ont échoué |
+| Liste blanche des rôles dans `CompteController` | A-20 | ✅ A-20 a échoué |
+| Filtre établissement de `Rule::exists` sur le matériel (`PretController`) | A-27 | ✅ A-27 a échoué |
+| Filtre établissement de `Rule::exists` sur les classes (`CompteController`) | A-28 | ✅ A-28 a échoué |
+| Filtre établissement de `Rule::unique` sur le numéro d'inventaire | A-29 | ✅ A-29 a échoué |
+| Isolation du journal (scope et établissement de l'auteur) | A-24, A-30 | ✅ A-24 et A-30 ont échoué |
+| `Auth::hasUser()` remplacé par `Auth::user()` dans le scope | A-25 | ⚠️ A-25 **ne se termine jamais** (boucle infinie), arrêté au bout de 120 s : le problème est détecté, mais par un blocage et pas par un échec |
 
 ---
 
@@ -252,8 +298,8 @@ Les tests tournent sur une base SQLite en mémoire : ils ne modifient pas la bas
 | T-MAT-01 | BF-10 | Emma | Menu Matériel | Tableau avec nom, catégorie, n° d'inventaire, état (pastille de couleur), disponibilité. 6 matériels. **Aucun** bouton Ajouter / Modifier / Archiver. Lien « Emprunter » sur les matériels disponibles. 📷 | | ☐ OK ☐ KO |
 | T-MAT-02 | BF-10 | Emma | Rechercher `vidéo` | Seuls les 2 vidéoprojecteurs | | ☐ OK ☐ KO |
 | T-MAT-03 | BF-10 | Gaëlle | Menu Matériel | Mêmes colonnes + Modifier et Archiver sur chaque ligne, bouton « Ajouter un matériel », case « Afficher les archivés » | | ☐ OK ☐ KO |
-| T-MAT-04 | BF-11 | Gaëlle | Ajouter : nom `Tablette Samsung`, catégorie `Tablette`, n° `INV-TAB-001`, état Disponible | Retour au catalogue, « Le matériel « Tablette Samsung » a été ajouté. », la tablette apparaît | | ☐ OK ☐ KO |
-| T-MAT-05 | ES-10 | Gaëlle | Ajouter un matériel avec le n° `INV-PC-001` | « Ce numéro d'inventaire est déjà utilisé. », rien n'est créé | | ☐ OK ☐ KO |
+| T-MAT-04 | BF-11 | Gaëlle | Ajouter : nom `Tablette Samsung`, catégorie `Tablette`, n° `INV-TAB-001`, état Disponible | Retour au catalogue, « Le matériel « Tablette Samsung » a été ajouté. », la tablette apparaît. (INV-TAB-001 existe déjà dans le lycée B : c'est autorisé) 🤖 | | ☐ OK ☐ KO |
+| T-MAT-05 | ES-10 | Gaëlle | Ajouter un matériel avec le n° `INV-PC-001` | « Ce numéro d'inventaire est déjà utilisé dans votre établissement. », rien n'est créé 🤖 | | ☐ OK ☐ KO |
 | T-MAT-06 | ES-10 | Gaëlle | Ajouter avec tous les champs vides (supprimer `required`) | Un message par champ : « Le nom est obligatoire. », « La catégorie est obligatoire. », « Le numéro d'inventaire est obligatoire. » | | ☐ OK ☐ KO |
 | T-MAT-07 | BF-12 | Gaëlle | Modifier la tablette : état « En panne » | « … a été modifié. », pastille rouge « En panne », disponibilité « Non » | | ☐ OK ☐ KO |
 | T-MAT-08 | BF-12 | Gaëlle | Dans le formulaire, ouvrir la liste des états | Seulement Disponible, En panne, En réparation (ni « Prêté », ni « Archivé ») | | ☐ OK ☐ KO |
@@ -349,14 +395,14 @@ Les tests tournent sur une base SQLite en mémoire : ils ne modifient pas la bas
 
 | ID | Exigence | Étapes | Résultat attendu | Résultat obtenu | Statut |
 | --- | --- | --- | --- | --- | --- |
-| T-JOU-01 | BF-31 | Adam → menu Journal | Une ligne par action ci-dessus, la plus récente en haut, avec date et heure, utilisateur, action, objet, adresse IP 📷 | | ☐ OK ☐ KO |
-| T-JOU-02 | Section 6 | Ligne de l'e-mail inventé | Utilisateur « — », action « Connexion échouée », objet « Compte inconnu : … » | | ☐ OK ☐ KO |
+| T-JOU-01 | BF-31 | Adam → menu Journal | Une ligne par action ci-dessus **sauf l'e-mail inventé** (voir T-JOU-02), la plus récente en haut, avec date et heure, utilisateur, action, objet, adresse IP 📷 | | ☐ OK ☐ KO |
+| T-JOU-02 | Section 6, isolation | Ligne de l'e-mail inventé : la chercher chez Adam, puis chez Sacha (super-administrateur) | Adam : **absente** (un e-mail inconnu n'a pas d'établissement). Sacha : utilisateur « — », action « Connexion échouée », objet « Compte inconnu : … » | | ☐ OK ☐ KO |
 | T-JOU-03 | Section 6 | Ligne du mauvais mot de passe | Utilisateur eleve@lycee.test, objet « Mauvais mot de passe : … ». **Le mot de passe tapé n'apparaît nulle part** | | ☐ OK ☐ KO |
 | T-JOU-04 | RA-08 | Ligne du 403 | Action « Accès refusé (403) », objet `GET /journal` 🤖 | | ☐ OK ☐ KO |
 | T-JOU-05 | Section 6 | Lignes des prêts | « Prêt validé » par Eric (Prêt n° 1…), « Prêt refusé » par Gaëlle avec le motif | | ☐ OK ☐ KO |
 | T-JOU-06 | Fuseau | Comparer l'heure des lignes avec l'heure de l'ordinateur | Heure de Paris | | ☐ OK ☐ KO |
 | T-JOU-07 | BF-31 | Filtre Action = « Accès refusé (403) » | Seulement les lignes de 403 | | ☐ OK ☐ KO |
-| T-JOU-08 | BF-31 | Recherche `inconnu` ou l'e-mail inventé | La ligne « Compte inconnu » | | ☐ OK ☐ KO |
+| T-JOU-08 | BF-31 | Sacha (super-administrateur) : recherche `inconnu` ou l'e-mail inventé | La ligne « Compte inconnu » (chez Adam : « Aucun événement. ») | | ☐ OK ☐ KO |
 | T-JOU-09 | BF-31 | Filtre « Du » = demain | « Aucun événement. » | | ☐ OK ☐ KO |
 | T-JOU-10 | Lecture seule | Chercher un bouton Modifier / Supprimer dans le journal | Aucun | | ☐ OK ☐ KO |
 | T-JOU-11 | Lecture seule | MariaDB : `UPDATE journal SET action = 'falsifie' WHERE id = 1;` | **Refusé** : « Le journal de securite est en lecture seule » 📷 | | ☐ OK ☐ KO |
@@ -400,13 +446,61 @@ Les tests tournent sur une base SQLite en mémoire : ils ne modifient pas la bas
 
 ---
 
-## 11. Sécurité (OWASP)
+## 11. Isolation entre établissements (multi-établissement)
+
+**Préparation** : `php artisan migrate:fresh --seed`. Les numéros utilisés ci-dessous sont ceux du § 1.3 (Léa = compte n° 6, Lenovo = matériel n° 7, prêt de Léa = n° 4, classe « 1re STMG 2 » du lycée B = n° 3, rôle super-administrateur = n° 5).
+
+### 11.1 Chaque lycée ne voit que ses données
+
+| ID | Compte | Étapes | Résultat attendu | Résultat obtenu | Statut |
+| --- | --- | --- | --- | --- | --- |
+| T-ETA-01 | Gaëlle (A) | Menu Matériel | 6 matériels. INV-PC-001 = **Dell Latitude**. Ni Lenovo, ni Optoma, ni Galaxy Tab 🤖 | | ☐ OK ☐ KO |
+| T-ETA-02 | Inès (B) | Menu Matériel | 3 matériels. INV-PC-001 = **Lenovo ThinkPad** 📷 | | ☐ OK ☐ KO |
+| T-ETA-03 | Gaëlle (A) | Menu Prêts, puis Tableau de bord | Prêts n° 1, 2, 3 seulement. Jamais les n° 4 et 5 (Léa, Hugo) 🤖 | | ☐ OK ☐ KO |
+| T-ETA-04 | Adam (A) | Menu Comptes | Les 5 comptes du lycée A. Aucune adresse `@lycee-b.test`, pas de `superadmin@academie.test` 🤖 | | ☐ OK ☐ KO |
+| T-ETA-05 | Basile (B) | Menu Comptes | Les 4 comptes du lycée B seulement | | ☐ OK ☐ KO |
+
+### 11.2 Adresses tapées à la main (même réponse qu'une donnée inexistante)
+
+| ID | Compte | Adresse tapée | Résultat attendu | Résultat obtenu | Statut |
+| --- | --- | --- | --- | --- | --- |
+| T-ETA-06 | Gaëlle (A) | `/materiels/7/modifier` (Lenovo du lycée B), puis `/materiels/9999/modifier` | Les deux fois : « Page introuvable », code **404**. Impossible de savoir que le n° 7 existe 🤖 📷 | | ☐ OK ☐ KO |
+| T-ETA-07 | Gaëlle (A) | `/prets/4` (prêt de Léa), puis `/prets/99999` | Les deux fois : « Accès refusé », code **403** (règle RA-03 : inexistant ou interdit → même 403) 🤖 | | ☐ OK ☐ KO |
+| T-ETA-08 | Adam (A) | `/comptes/6/modifier` (Léa), puis `/comptes/9999/modifier` | Les deux fois : 404 🤖 | | ☐ OK ☐ KO |
+
+### 11.3 Formulaires forgés (les filtres que le scope ne couvre pas)
+
+| ID | Compte | Étapes | Résultat attendu | Résultat obtenu | Statut |
+| --- | --- | --- | --- | --- | --- |
+| T-ETA-09 | Emma (A) | Formulaire de demande de prêt : F12, changer la valeur d'une option du matériel en `7` (Lenovo du lycée B), envoyer | « Ce matériel ne peut pas être emprunté. », aucun prêt créé 🤖 | | ☐ OK ☐ KO |
+| T-ETA-10 | Adam (A) | Modifier Emma : les cases « Classes » ne proposent que « 1re STMG 2 » et « 2nde 3 » du lycée A. F12 : changer la valeur d'une case en `3`, la cocher, enregistrer | « Une des classes choisies n'existe pas. » 🤖 | | ☐ OK ☐ KO |
+| T-ETA-11 | Gaëlle (A) | Ajouter un matériel n° `INV-TAB-001` (existe dans le lycée B), puis un autre n° `INV-PC-001` | Le 1er est accepté. Le 2e : « Ce numéro d'inventaire est déjà utilisé dans votre établissement. » 🤖 | | ☐ OK ☐ KO |
+| T-ETA-12 | Adam (A) | Modifier un compte : ouvrir le menu « Rôle ». Puis F12 : changer la valeur d'une option en `5`, envoyer | Pas de « Super-administrateur » dans le menu. Après envoi : « Ce rôle n'existe pas. » 🤖 📷 | | ☐ OK ☐ KO |
+
+### 11.4 Journal et super-administrateur
+
+| ID | Compte | Étapes | Résultat attendu | Résultat obtenu | Statut |
+| --- | --- | --- | --- | --- | --- |
+| T-ETA-13 | Fenêtre privée, puis Adam et Basile | Connexion avec `eleve@lycee-b.test` et un mauvais mot de passe. Adam ouvre le Journal, puis Basile | Adam (A) : la ligne **n'apparaît pas**. Basile (B) : « Connexion échouée », eleve@lycee-b.test 🤖 | | ☐ OK ☐ KO |
+| T-ETA-14 | Sacha (super-admin) | Se connecter, puis Comptes, Matériel, Journal | Connexion OK. 10 comptes des 2 lycées, 9 matériels (les deux INV-PC-001), toutes les lignes du journal, y compris les e-mails inconnus 🤖 📷 | | ☐ OK ☐ KO |
+| T-ETA-15 | Sacha (super-admin) | Modifier Léa (`/comptes/6/modifier`) | Le formulaire s'ouvre. Les classes proposées sont seulement celles du lycée B (une seule « 1re STMG 2 ») | | ☐ OK ☐ KO |
+
+### 11.5 Contraintes en base (MariaDB)
+
+| ID | Requête | Résultat attendu | Résultat obtenu | Statut |
+| --- | --- | --- | --- | --- |
+| T-ETA-16 | `INSERT INTO materiels (etablissement_id, nom, categorie, numero_inventaire) VALUES (1, 'Doublon', 'Test', 'INV-PC-001');` | **Refusé** : *Duplicate entry '1-INV-PC-001'* (clé unique composite). Avec `etablissement_id = 2`, même refus ; le numéro existe déjà dans les deux lycées | | ☐ OK ☐ KO 📷 |
+| T-ETA-17 | `DELETE FROM etablissements WHERE id = 2;` | **Refusé** : erreur de clé étrangère (le lycée B a encore des données) | | ☐ OK ☐ KO |
+
+---
+
+## 12. Sécurité (OWASP)
 
 | ID | Exigence | Étapes | Résultat attendu | Résultat obtenu | Statut |
 | --- | --- | --- | --- | --- | --- |
 | T-SEC-01 | ES-06 (XSS) | Gaëlle : ajouter un matériel nommé `<script>alert('XSS')</script>` | **Aucune** fenêtre d'alerte. Le texte s'affiche tel quel dans le catalogue 📷 | | ☐ OK ☐ KO |
 | T-SEC-02 | ES-06 (XSS) | Gaëlle : refuser un prêt avec le motif `<b>gras</b><img src=x onerror=alert(1)>` | Motif affiché comme du texte, rien n'est interprété | | ☐ OK ☐ KO |
-| T-SEC-03 | ES-06 (XSS) | Connexion avec l'e-mail `"><script>alert(1)</script>@a.fr` (supprimer `type="email"`), puis Adam ouvre le journal | Pas d'alerte, ni sur la page de connexion, ni dans le journal | | ☐ OK ☐ KO |
+| T-SEC-03 | ES-06 (XSS) | Connexion avec l'e-mail `"><script>alert(1)</script>@a.fr` (supprimer `type="email"`), puis Sacha (super-administrateur) ouvre le journal (un e-mail inconnu n'est visible que par lui) | Pas d'alerte, ni sur la page de connexion, ni dans le journal | | ☐ OK ☐ KO |
 | T-SEC-04 | ES-05 (SQL) | Catalogue : rechercher `' OR '1'='1` | Aucune erreur, « Aucun matériel trouvé. » (le texte est cherché tel quel) 📷 | | ☐ OK ☐ KO |
 | T-SEC-05 | ES-05 (SQL) | Connexion avec l'e-mail `admin@lycee.test' -- ` | « Identifiants incorrects. » (ou « n'est pas valide »), aucune erreur SQL | | ☐ OK ☐ KO |
 | T-SEC-06 | ES-07 (CSRF) | F12 sur un formulaire (ex. Archiver) : supprimer le champ caché `_token`, envoyer | Page « Page expirée », code **419**, l'action n'est pas faite 📷 | | ☐ OK ☐ KO |
@@ -422,19 +516,20 @@ Les tests tournent sur une base SQLite en mémoire : ils ne modifient pas la bas
 
 ---
 
-## 12. Installation et exploitation
+## 13. Installation et exploitation
 
 | ID | Étapes | Résultat attendu | Résultat obtenu | Statut |
 | --- | --- | --- | --- | --- |
 | T-INS-01 | Suivre l'installation du README dans un autre dossier (`git clone`, `composer install`, `.env`, `migrate --seed`) | Application fonctionnelle, connexion possible avec les comptes de test | | ☐ OK ☐ KO |
 | T-INS-02 | `mariadb -u materiel_app -p gestion_materiel < docs/base_gestion_materiel.sql`, puis `php artisan migrate:status` | Import sans erreur, toutes les migrations « Ran », connexion avec Adam possible | | ☐ OK ☐ KO |
 | T-INS-03 | `APP_ENV=production` dans `.env`, puis `php artisan db:seed --class=UtilisateurTestSeeder` (Laravel demande une confirmation : répondre `yes`) | « Comptes de test refusés en production. », aucun compte créé. Remettre `APP_ENV=local` | | ☐ OK ☐ KO |
-| T-INS-04 | `php artisan materiel:creer-admin` : saisir un prénom, un nom, un e-mail, confirmer | Mot de passe temporaire affiché une fois. Connexion → changement obligatoire. Ligne « Compte créé – créé en ligne de commande » dans le journal 🤖 | | ☐ OK ☐ KO |
+| T-INS-04 | `php artisan materiel:creer-admin` : saisir un prénom, un nom, un e-mail, choisir « Lycée Saint-Joseph » dans la liste, confirmer | Mot de passe temporaire affiché une fois. Connexion → changement obligatoire. Le nouvel administrateur ne voit que les comptes du lycée A. Ligne « Compte créé – créé en ligne de commande » dans le journal (visible par le super-administrateur : la commande n'a pas d'auteur connecté) 🤖 | | ☐ OK ☐ KO |
 | T-INS-05 | Relancer la commande avec le même e-mail | « Cette adresse e-mail est déjà utilisée par un autre compte. » 🤖 | | ☐ OK ☐ KO |
+| T-INS-06 | `php artisan materiel:creer-admin --super` : saisir un prénom, un nom, un e-mail, confirmer | **Aucune** question sur l'établissement. Question « Créer le compte SUPER-ADMINISTRATEUR … (accès à tous les établissements) ? ». Connexion → il voit les comptes des deux lycées 🤖 | | ☐ OK ☐ KO |
 
 ---
 
-## 13. Fonctions non développées
+## 14. Fonctions non développées
 
 Ces besoins du cahier des charges **ne sont pas testables** dans cette version :
 
@@ -450,16 +545,20 @@ Ces besoins du cahier des charges **ne sont pas testables** dans cette version :
 **Limites connues**, sans incidence sur la sécurité :
 
 - Le cookie `Secure` ne sera actif qu'une fois l'application en HTTPS (`SESSION_SECURE_COOKIE=true`).
+- **Multi-établissement** :
+  - aucun écran ni commande pour créer un établissement : un `INSERT` SQL pour l'instant (voir le README) ;
+  - le super-administrateur ne peut pas encore créer de compte ou de matériel depuis le web : l'application refuse (erreur) plutôt que de créer une donnée sans établissement ;
+  - les actions du super-administrateur et les lignes du journal d'avant le multi-établissement n'ont pas d'établissement : seul le super-administrateur les voit.
 
 ---
 
-## 14. Synthèse
+## 15. Synthèse
 
 À remplir après la campagne de tests.
 
 | Section | Nombre de tests | OK | KO | Non testables |
 | --- | --- | --- | --- | --- |
-| 2. Tests automatiques | 19 | | | |
+| 2. Tests automatiques | 30 | | | |
 | 3. Connexion et sessions | 17 | | | |
 | 4. Mot de passe temporaire | 9 | | | |
 | 5. Autorisations et erreurs | 14 | | | |
@@ -468,9 +567,10 @@ Ces besoins du cahier des charges **ne sont pas testables** dans cette version :
 | 8. Tableau de bord | 5 | | | |
 | 9. Journal | 13 | | | |
 | 10. Comptes | 19 | | | |
-| 11. Sécurité | 15 | | | |
-| 12. Installation | 5 | | | |
-| **Total** | **166** | | | |
+| 11. Isolation entre établissements | 17 | | | |
+| 12. Sécurité | 15 | | | |
+| 13. Installation | 6 | | | |
+| **Total** | **195** | | | |
 
 **Critères d'acceptation du cahier des charges (section 9)** :
 
@@ -478,6 +578,7 @@ Ces besoins du cahier des charges **ne sont pas testables** dans cette version :
 | --- | --- | --- |
 | Chaque besoin BF-xx démontrable en moins de 2 minutes | Sections 3 à 10 | ☐ Oui ☐ Non |
 | Aucun accès non autorisé lors des tests de la section 5.7 | A-01 à A-13, sections 5 et 7.1 | ☐ Oui ☐ Non |
+| Aucune donnée d'un autre établissement visible ou modifiable | A-20, A-22 à A-30, section 11 | ☐ Oui ☐ Non |
 | Aucune faille d'injection SQL ou XSS trouvée avec OWASP ZAP | T-SEC-01 à T-SEC-05, T-SEC-12 | ☐ Oui ☐ Non |
 
 | Date de la campagne | Testeur | Signature |
@@ -486,7 +587,7 @@ Ces besoins du cahier des charges **ne sont pas testables** dans cette version :
 
 ---
 
-## 15. Fiche d'anomalie
+## 16. Fiche d'anomalie
 
 À copier pour chaque test **KO**.
 

@@ -4,11 +4,12 @@
 ![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)
 ![PHP](https://img.shields.io/badge/PHP-8.4-777BB4?style=for-the-badge&logo=php&logoColor=white)
 ![MariaDB](https://img.shields.io/badge/MariaDB-11.8-003545?style=for-the-badge&logo=mariadb&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-19%20r%C3%A9ussis-brightgreen?style=for-the-badge)
+![Tests](https://img.shields.io/badge/tests-30%20r%C3%A9ussis-brightgreen?style=for-the-badge)
 ![Licence](https://img.shields.io/badge/licence-propri%C3%A9taire-lightgrey?style=for-the-badge)
 
 Application web qui permet au lycée de **prêter son matériel** (ordinateurs portables, vidéoprojecteurs, caméras, câbles…) en sachant à tout moment **qui a quoi, depuis quand, et qui a le droit de faire quoi**.
 Chaque utilisateur ne voit et ne fait que ce que son rôle autorise, et toutes les actions sensibles sont enregistrées dans un journal de sécurité.
+L'application est **multi-établissement** : plusieurs lycées la partagent, et chacun ne voit que ses propres données.
 
 Projet réalisé pour l'épreuve **E5 du BTS SIO option SLAM**, avec un volet sécurité mis en avant.
 
@@ -40,6 +41,9 @@ Projet réalisé pour l'épreuve **E5 du BTS SIO option SLAM**, avec un volet s�
 | **Enseignant** | Comme l'élève, et valider les demandes des **élèves de ses classes** |
 | **Gestionnaire** | Gérer l'inventaire, valider toutes les demandes (sauf les siennes), enregistrer les sorties et les retours |
 | **Administrateur** | Gérer les comptes et les rôles, consulter le journal de sécurité |
+| **Super-administrateur** | Comme l'administrateur, mais sur **tous les lycées**. Créé uniquement depuis le terminal du serveur |
+
+Chaque compte appartient à **un lycée** (sauf le super-administrateur) : « toutes les demandes » veut dire « toutes celles de son lycée ».
 
 Fonctions principales :
 
@@ -49,6 +53,7 @@ Fonctions principales :
 - **Prêts** : demande → validation ou refus (motif obligatoire) → sortie → retour avec l'état du matériel.
 - **Tableau de bord par rôle** : mes prêts en cours, demandes à valider, sorties à enregistrer, retards.
 - **Journal de sécurité** en lecture seule : connexions, accès refusés, changements de rôle, décisions sur les prêts.
+- **Multi-établissement** : comptes, matériels, classes, prêts et journal sont rangés par lycée. Un utilisateur d'un lycée ne voit aucune donnée d'un autre, même en tapant l'adresse à la main. Deux lycées peuvent avoir le même numéro d'inventaire.
 
 Le détail des besoins est dans le [cahier des charges](docs/cahier-des-charges.md).
 
@@ -147,7 +152,7 @@ Réglages propres au projet, déjà présents dans `.env.example` :
 php artisan migrate --seed
 ```
 
-Cette commande crée les tables, les 4 rôles, les 11 permissions, la matrice rôles / permissions, et des **données de test** (comptes, classes, matériels, demandes de prêt).
+Cette commande crée les tables, l'établissement par défaut « Lycée Saint-Joseph », les 5 rôles, les 11 permissions, la matrice rôles / permissions, et des **données de test pour deux lycées** (comptes, classes, matériels, demandes de prêt).
 
 Pour repartir de zéro (⚠️ efface toute la base) :
 
@@ -159,7 +164,7 @@ php artisan migrate:fresh --seed
 
 > ✅ **Les migrations restent la méthode recommandée.** Elles sont toujours à jour avec le code, elles fonctionnent aussi pour la base SQLite des tests, et c'est par elles que les évolutions de la base seront livrées. Le script SQL est fourni comme livrable (cahier des charges, section 9) et pour un poste où l'on veut seulement une base de démonstration.
 
-Le fichier [docs/base_gestion_materiel.sql](docs/base_gestion_materiel.sql) contient la **structure** (les 17 tables et les 2 triggers du journal) et le **même jeu de données de test** que les seeders. Il remplace les étapes `migrate --seed` ci-dessus, à condition que la base et l'utilisateur `materiel_app` existent déjà (étape 3) :
+Le fichier [docs/base_gestion_materiel.sql](docs/base_gestion_materiel.sql) contient la **structure** (les 18 tables et les 2 triggers du journal) et le **même jeu de données de test** que les seeders. Il remplace les étapes `migrate --seed` ci-dessus, à condition que la base et l'utilisateur `materiel_app` existent déjà (étape 3) :
 
 ```bash
 mariadb -u materiel_app -p gestion_materiel < docs/base_gestion_materiel.sql
@@ -169,7 +174,7 @@ mariadb -u materiel_app -p gestion_materiel < docs/base_gestion_materiel.sql
 
 - ⚠️ le script commence par `DROP TABLE IF EXISTS` : il **remplace** les tables existantes et efface leurs données ;
 - la table `migrations` est remplie : `php artisan migrate:status` affiche toutes les migrations comme déjà exécutées ;
-- les dates des 3 demandes de prêt sont celles du jour où le fichier a été généré ;
+- les dates des 5 demandes de prêt sont celles du jour où le fichier a été généré ;
 - ⚠️ **développement et démonstration uniquement** : il contient les comptes de test, dont les mots de passe sont publics.
 
 Pour **régénérer** le fichier après une modification des migrations ou des seeders :
@@ -200,7 +205,11 @@ Puis ouvrir http://127.0.0.1:8000 : la page de connexion s'affiche.
 
 ## Comptes de test
 
-> ⚠️ **Développement uniquement.** Ces mots de passe sont écrits dans le code (`database/seeders/UtilisateurTestSeeder.php`). Le seeder **refuse de s'exécuter** quand `APP_ENV=production`.
+> ⚠️ **Développement uniquement.** Ces mots de passe sont écrits dans le code (`database/seeders/UtilisateurTestSeeder.php`). Les seeders de test **refusent de s'exécuter** quand `APP_ENV=production`.
+
+Les données de test remplissent **deux lycées** (`database/seeders/EtablissementTestSeeder.php`).
+
+### Lycée A : Lycée Saint-Joseph
 
 | Rôle | E-mail | Mot de passe | Classe |
 | --- | --- | --- | --- |
@@ -212,16 +221,34 @@ Puis ouvrir http://127.0.0.1:8000 : la page de connexion s'affiche.
 
 L'enseignant est dans la classe du 1er élève mais pas dans celle du 2e : cela permet de tester les règles « l'enseignant voit et valide les élèves de **ses** classes ».
 
+### Lycée B : Lycée Jean-Moulin (test), fictif
+
+| Rôle | E-mail | Mot de passe | Classe |
+| --- | --- | --- | --- |
+| Élève | eleve@lycee-b.test | Eleve-B-Test-2026 | 1re STMG 2 |
+| Enseignant | enseignant@lycee-b.test | Enseignant-B-Test-2026 | 1re STMG 2 |
+| Gestionnaire | gestionnaire@lycee-b.test | Gestionnaire-B-Test-2026 | — |
+| Administrateur | admin@lycee-b.test | Admin-B-Test-2026 | — |
+
+### Tous les lycées
+
+| Rôle | E-mail | Mot de passe |
+| --- | --- | --- |
+| Super-administrateur | superadmin@academie.test | Super-Admin-Test-2026 |
+
+Pour voir l'isolation : la classe « 1re STMG 2 » et le numéro d'inventaire **INV-PC-001** existent dans les deux lycées. Connecté avec `gestionnaire@lycee.test`, INV-PC-001 est un Dell ; avec `gestionnaire@lycee-b.test`, c'est un Lenovo. Le super-administrateur voit les deux.
+
 ---
 
 ## Tests automatiques
 
 ```bash
-php artisan test                                        # tous les tests (19)
+php artisan test                                        # tous les tests (30)
 php artisan test --filter=AutorisationsTest             # le tableau 5.7 du cahier des charges
 php artisan test --filter=CoherenceVisibilitePretsTest  # liste et détail des prêts toujours d'accord
-php artisan test --filter=CreerAdministrateurTest       # commande de création du premier administrateur
+php artisan test --filter=CreerAdministrateurTest       # commande de création des administrateurs (et --super)
 php artisan test --filter=EnTetesSecuriteTest           # en-têtes de sécurité HTTP (audit OWASP ZAP)
+php artisan test --filter=IsolationEtablissementsTest   # aucun lycée ne voit les données d'un autre
 ```
 
 Les tests tournent sur une base **SQLite en mémoire** (voir `phpunit.xml`) : ils ne touchent jamais la base MariaDB.
@@ -234,7 +261,11 @@ Ils prouvent notamment que :
 - personne ne valide sa propre demande, un enseignant ne valide pas un élève d'une autre classe ;
 - un administrateur ne peut ni changer son propre rôle ni se désactiver ;
 - un changement de rôle ferme les sessions de la personne concernée ;
-- un compte désactivé ne peut pas se connecter, avec un message générique.
+- un compte désactivé ne peut pas se connecter, avec un message générique ;
+- un utilisateur du lycée A ne voit **aucune** donnée du lycée B (matériel, prêt, compte, classe, journal), ni dans les listes ni par adresse directe, où il obtient la même réponse que pour un id inexistant ;
+- un formulaire forgé ne peut pas viser un matériel ou une classe d'un autre lycée ;
+- un administrateur ne peut pas donner le rôle super-administrateur ;
+- la connexion fonctionne pour les deux lycées et pour le super-administrateur, qui voit tout.
 
 ---
 
@@ -247,19 +278,21 @@ app/
 │   ├── Controllers/         Un contrôleur par écran (Pret, Materiel, Compte, Journal, TableauDeBord)
 │   │   └── Auth/            Connexion, déconnexion, changement de mot de passe
 │   └── Middleware/          ExigerChangementMotDePasse (mot de passe temporaire)
-├── Models/                  Modèles Eloquent (Utilisateur, Role, Permission, Classe, Materiel, Pret, Journal)
+├── Models/                  Modèles Eloquent (Etablissement, Utilisateur, Role, Permission, Classe, Materiel, Pret, Journal)
+│   ├── Concerns/            Trait AppartientAUnEtablissement (scope + remplissage de etablissement_id)
+│   └── Scopes/              EtablissementScope : chaque requête filtrée sur le lycée de l'utilisateur
 ├── Policies/                Règles de périmètre : PretPolicy, UtilisateurPolicy
 └── Providers/               AppServiceProvider : un Gate par permission
 bootstrap/app.php            Redirections, nom des middlewares, journalisation des erreurs 403
 config/prets.php             Réglages des prêts (limite RA-07)
 database/
 ├── migrations/              Création des tables (noms en français) et protection du journal
-└── seeders/                 Rôles, permissions, données de test
+└── seeders/                 Rôles, permissions, données de test des deux lycées
 docs/                        Cahier des charges, architecture, autorisations, cahier de tests, script SQL
 public/css/app.css           Feuille de style
 resources/views/             Vues Blade (un dossier par écran, errors/ pour 403, 404, 429)
 routes/web.php               Toutes les routes, avec leurs middlewares
-tests/Feature/               Tests d'autorisation
+tests/Feature/               Tests d'autorisation et d'isolation entre établissements
 ```
 
 ---
@@ -275,24 +308,36 @@ Liste de vérification avant la mise en ligne :
 - [ ] `APP_URL` avec l'adresse définitive (nom de domaine **à préciser**) ;
 - [ ] mot de passe solide pour `materiel_app`, différent de celui du développement ;
 - [ ] `php artisan migrate --force` **sans** `--seed` : les comptes de test ne doivent pas exister en production ;
-- [ ] créer le premier compte administrateur (voir ci-dessous) ;
+- [ ] vérifier ou corriger le nom de l'établissement par défaut, puis ajouter les autres lycées (voir ci-dessous) ;
+- [ ] créer le premier compte administrateur de chaque lycée (voir ci-dessous) ;
 - [ ] `php artisan config:cache` et `php artisan route:cache` ;
 - [ ] PHP : `expose_php = Off` dans `php.ini` (ne pas révéler la version de PHP) ;
 - [ ] Apache : `ServerTokens Prod` et `ServerSignature Off` (ne pas révéler la version d'Apache), et ajouter `Header always set X-Content-Type-Options "nosniff"` pour les fichiers de `public/` (CSS, JS), qui ne passent pas par Laravel ;
 - [ ] vérifier que l'en-tête `Strict-Transport-Security` (HSTS) apparaît bien en HTTPS. Si Apache est placé derrière un autre serveur (proxy), configurer les *trusted proxies* de Laravel, sinon l'application croit être en HTTP et n'envoie pas HSTS ;
 - [ ] configurer l'envoi d'e-mails (`MAIL_*`) pour les rappels de retour (BF-23, pas encore développé).
 
-### Créer le premier administrateur
+### Ajouter les établissements
 
-En production, la base ne contient aucun compte : les comptes de test ne sont pas créés. Le premier administrateur se crée **depuis le terminal du serveur** :
+La migration crée un seul établissement, « Lycée Saint-Joseph ». Il n'existe **pas encore** d'écran ni de commande pour en créer d'autres : on les ajoute dans MariaDB (le nom est unique) :
 
-```bash
-php artisan db:seed --class=RoleSeeder        # les 4 rôles
-php artisan db:seed --class=PermissionSeeder  # les 11 permissions et la matrice rôles / permissions
-php artisan materiel:creer-admin              # demande le prénom, le nom et l'e-mail
+```sql
+INSERT INTO etablissements (nom) VALUES ('Nom exact du lycée');
 ```
 
-La commande affiche **une seule fois** un mot de passe temporaire de 16 caractères, à changer à la première connexion. La création est écrite dans le journal de sécurité. Cet administrateur crée ensuite tous les autres comptes depuis l'application (menu **Comptes**).
+### Créer les administrateurs
+
+En production, la base ne contient aucun compte : les comptes de test ne sont pas créés. Les administrateurs se créent **depuis le terminal du serveur** :
+
+```bash
+php artisan db:seed --class=RoleSeeder        # les 5 rôles (dont super_admin)
+php artisan db:seed --class=PermissionSeeder  # les 11 permissions et la matrice rôles / permissions
+php artisan materiel:creer-admin              # prénom, nom, e-mail, puis choix de l'établissement
+php artisan materiel:creer-admin --super      # super-administrateur : tous les établissements
+```
+
+La commande affiche **une seule fois** un mot de passe temporaire de 16 caractères, à changer à la première connexion. La création est écrite dans le journal de sécurité. Chaque administrateur crée ensuite les autres comptes **de son lycée** depuis l'application (menu **Comptes**).
+
+Le super-administrateur ne peut être créé **que** par `--super` : les écrans de comptes ne proposent jamais ce rôle. Qui détient ce compte est **à préciser**.
 
 ---
 
