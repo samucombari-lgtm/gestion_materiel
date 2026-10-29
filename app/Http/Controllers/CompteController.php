@@ -9,6 +9,7 @@ use App\Models\Role;
 use App\Models\Utilisateur;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
@@ -264,7 +265,12 @@ class CompteController extends Controller
             'prenom' => ['required', 'string', 'max:100'],
             'email' => ['required', 'string', 'email', 'max:255', $regleEmailUnique],
             'classes' => ['nullable', 'array'],
-            'classes.*' => ['integer', Rule::exists('classes', 'id')],
+            // Rule::exists ne passe pas par EtablissementScope : sans ce where, on
+            // pourrait mettre le compte dans une classe d'un autre lycée.
+            'classes.*' => [
+                'integer',
+                Rule::exists('classes', 'id')->where('etablissement_id', $this->idEtablissementDuCompte($compte)),
+            ],
         ];
 
         if ($avecRole) {
@@ -312,12 +318,24 @@ class CompteController extends Controller
         return Rule::exists('roles', 'id')->whereIn('nom', Role::ATTRIBUABLES_PAR_FORMULAIRE);
     }
 
+    /**
+     * Établissement dont les classes peuvent être choisies pour ce compte :
+     * celui du compte modifié, ou celui de l'administrateur connecté pour une création
+     * (le compte créé ira dans son établissement, voir AppartientAUnEtablissement).
+     * Écrit explicitement pour qu'un super-administrateur, que le scope ne filtre
+     * pas, ne voie pas non plus les classes des autres lycées.
+     */
+    private function idEtablissementDuCompte(?Utilisateur $compte): ?int
+    {
+        return $compte?->etablissement_id ?? Auth::user()->etablissement_id;
+    }
+
     private function donneesDuFormulaire(Utilisateur $compte): array
     {
         return [
             'compte' => $compte,
             'roles' => Role::whereIn('nom', Role::ATTRIBUABLES_PAR_FORMULAIRE)->orderBy('id')->get(),
-            'classes' => Classe::orderBy('nom')->get(),
+            'classes' => Classe::where('etablissement_id', $this->idEtablissementDuCompte($compte))->orderBy('nom')->get(),
             'idsClassesDuCompte' => $compte->exists ? $compte->classes()->pluck('classes.id')->all() : [],
         ];
     }
